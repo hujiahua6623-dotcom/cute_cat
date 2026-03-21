@@ -5,8 +5,9 @@
 
 ## 当前状态
 
-- 产品设计文档与开源基础文档已齐备；迭代路线见 `doc/开发周期计划.md`
-- 即将进入**开发设计阶段**（多组协作：UI 设计、前端、后端、测试、运维），随后启动周期 0 工程骨架与周期 1 切片实现
+- 产品设计文档与开源基础文档齐备；迭代路线见 `doc/开发周期计划.md`
+- **后端（周期 0 + 周期 1 切片）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket 与 `Feed`/`Cuddle`/`Pat`；详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
+- 前端工程目录可按 `doc/项目目录说明.md` 后续初始化
 
 ## 核心特性（设计中）
 
@@ -25,6 +26,18 @@
 - UI 方案：HTML/CSS 叠层（状态条、按钮、弹窗等）
 
 本地配置占位：复制根目录 `.env.example` 为 `.env` 并填写密钥（勿提交）。
+
+### 后端本地运行（摘要）
+
+```bash
+cd backend
+python3 -m pip install -e ".[dev]"   # 或按 backend/README 手动装依赖
+export PYTHONPATH=src
+alembic -c alembic.ini upgrade head   # 需已配置 MySQL DATABASE_URL
+uvicorn cute_cat.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+详见 [`backend/README.md`](backend/README.md)。
 
 ## 文档导航
 

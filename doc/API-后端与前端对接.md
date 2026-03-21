@@ -16,7 +16,16 @@
 ### 1.2 内容类型
 
 - Request / Response：`application/json; charset=utf-8`
-- 时间：ISO 8601 字符串，UTC 或带偏移（实现统一一种并在响应头或文档注明）。
+- 时间：ISO 8601 字符串，**实现统一为 UTC**（例如 `2026-03-21T10:00:00Z`）；`gardenSnapshot.serverNow` 等同理。
+
+### 1.2.1 健康检查（双路径）
+
+服务端同时提供：
+
+- `GET /health` — 便于负载均衡/探针（无前缀）
+- `GET /api/v1/health` — 与 REST 前缀一致
+
+响应体相同，例如：`{"status":"ok"}`。
 
 ### 1.3 错误响应（统一结构建议）
 
@@ -140,7 +149,8 @@
 | GET | `/api/v1/pets/{petId}` | 宠物完整快照 | Bearer |
 | GET | `/api/v1/offline-summary` | 离线摘要与建议动作 | Bearer |
 | GET | `/api/v1/gardens/ws-ticket` | 申请 WebSocket 短期 ticket | Bearer |
-| GET | `/api/v1/health` | 健康检查（也可放 `/health` 无前缀） | 无 |
+| GET | `/health` | 健康检查（无前缀） | 无 |
+| GET | `/api/v1/health` | 健康检查（与 API 前缀一致） | 无 |
 
 周期 2+ 可扩展：`/shop/*`、`/hospital/*` 等，落地时在本文件追加表格与示例。
 
@@ -374,7 +384,9 @@
 | `gardenId` | string | 房间 id |
 | `actionType` | string | 见 §9.3 |
 | `petId` | string | 目标宠物（MVP 多为自家宠物） |
-| `itemId` | string? | `Feed` 时选食物 |
+| `itemId` | string? | `Feed` 时选食物（**可选**；未传时服务端使用内置演示食物 `food_basic_01`，周期 2 再接入真实库存与扣费） |
+
+**说明（周期 1）**：`itemId` 缺省时效果与 `food_basic_01` 一致；传入未知 `itemId` 时服务端可按默认食物处理或返回 `400`（实现需与前端约定；当前实现为默认演示档）。
 
 ```json
 {
@@ -475,7 +487,7 @@
 
 ### 11.4 `petStateDelta`
 
-权威数值增量（或完整快照 + 版本号，二选一并文档化）。
+权威数值变更：**同时**提供 `delta`（本次相对变化，键为 `stats` 字段名，如 `mood`、`sickLevel`）与 `stats`（**当前完整**数值快照），便于前端直接覆盖 UI；`version` 为单调递增的宠物状态版本号。
 
 ```json
 {
@@ -527,8 +539,20 @@
 
 ---
 
-## 12. 修订记录
+## 12. 环境变量（联调）
+
+除根目录 `.env.example` 外，前端生成 WebSocket URL 依赖：
+
+| 变量 | 说明 |
+|------|------|
+| `PUBLIC_BASE_URL` | 如 `http://localhost:8000`，用于拼 `wsUrl`（`http`→`ws`，`https`→`wss`） |
+| `WS_TICKET_TTL_SECONDS` | ticket 有效期（秒），默认 60 |
+
+---
+
+## 13. 修订记录
 
 | 日期 | 说明 |
 |------|------|
 | 2026-03-21 | 初版：JWT + refresh、REST、WS、`actionType` 与切片骨架统一为 `Pat` |
+| 2026-03-21 | 补充：`/health` 双路径、`Feed` 可选 `itemId`、`petStateDelta` 同时含 `delta`+`stats`、UTC 与 `PUBLIC_BASE_URL` |
