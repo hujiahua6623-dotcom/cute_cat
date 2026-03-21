@@ -1,0 +1,12 @@
+/* Align with doc/UI设计-规范与稿清单.md §2.1 */
+:root {
+  --color-panel: #f5ecd7;
+  --color-border: #5c4033;
+  --color-primary: #7bc96f;
+  --color-danger: #e07a5f;
+  --color-info: #6b9ac4;
+  --color-text: #3d2914;
+  --color-text-muted: #6b5b4d;
+  --radius-panel: 8px;
+  --space: 8px;
+}

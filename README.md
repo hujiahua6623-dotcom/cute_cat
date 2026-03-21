@@ -7,7 +7,7 @@
 
 - 产品设计文档与开源基础文档齐备；迭代路线见 `doc/开发周期计划.md`
 - **后端（周期 0 + 周期 1 切片）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket 与 `Feed`/`Cuddle`/`Pat`；详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
-- 前端工程目录可按 `doc/项目目录说明.md` 后续初始化
+- **前端（周期 0 + 周期 1）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、节流指针与三动作；本地开发通过 Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
 
 ## 核心特性（设计中）
 
@@ -38,6 +38,18 @@ uvicorn cute_cat.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 详见 [`backend/README.md`](backend/README.md)。
+
+### 前端本地运行（摘要）
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+浏览器打开 Vite 提示的地址（默认 `http://localhost:5173`）；需同时启动后端以便登录与 WebSocket 联调。
+
+详见 [`frontend/README.md`](frontend/README.md)。
 
 ## 文档导航
 
