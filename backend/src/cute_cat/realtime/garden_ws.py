@@ -77,7 +77,15 @@ async def garden_socket(
                 )
 
     except WebSocketDisconnect:
+        gid = conn.garden_id
         hub.detach(conn)
+        if gid:
+            others = hub.others_in_garden(gid, user_id)
+            for other in others:
+                await _send_json(
+                    other.websocket,
+                    {"type": "userLeft", "payload": {"gardenId": gid, "userId": user_id}},
+                )
 
 
 async def _handle_message(
@@ -159,7 +167,8 @@ async def _handle_message(
             return
         x = float(pl.get("x", 0))
         y = float(pl.get("y", 0))
-        for other in hub.others_in_garden(gid, user_id):
+        others = hub.others_in_garden(gid, user_id)
+        for other in others:
             await _send_json(
                 other.websocket,
                 {

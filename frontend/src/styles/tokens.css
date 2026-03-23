@@ -1,12 +1,22 @@
 /* Align with doc/UI设计-规范与稿清单.md §2.1 */
 :root {
   --color-panel: #f5ecd7;
+  --color-panel-soft: #fbf4e5;
   --color-border: #5c4033;
+  --color-border-soft: #8b6b55;
   --color-primary: #7bc96f;
+  --color-primary-hover: #6fbc63;
+  --color-primary-active: #5ea753;
   --color-danger: #e07a5f;
+  --color-danger-soft: #fce4dd;
   --color-info: #6b9ac4;
+  --color-warning: #e8b84a;
+  --color-success-soft: #e6f8e2;
   --color-text: #3d2914;
   --color-text-muted: #6b5b4d;
+  --color-input-bg: #fffdf7;
   --radius-panel: 8px;
+  --radius-control: 8px;
   --space: 8px;
+  --shadow-pixel: 4px 4px 0 rgba(60, 40, 20, 0.15);
 }

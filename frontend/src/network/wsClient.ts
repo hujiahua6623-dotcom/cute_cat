@@ -35,12 +35,12 @@ export class GardenWsClient {
     for (const h of this.handlers) h(msg);
   }
 
-  async connect(): Promise<void> {
+  async connect(): Promise<WsTicketResponse> {
     this.close();
     this.onConnectionChange("connecting");
     const ticketPayload = await httpJson<WsTicketResponse>("/gardens/ws-ticket");
     const url = `${ticketPayload.wsUrl}?ticket=${encodeURIComponent(ticketPayload.ticket)}`;
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<WsTicketResponse>((resolve, reject) => {
       let settled = false;
       const ws = new WebSocket(url);
       this.socket = ws;
@@ -48,7 +48,7 @@ export class GardenWsClient {
         if (settled) return;
         settled = true;
         this.onConnectionChange("open");
-        resolve();
+        resolve(ticketPayload);
       };
       ws.onerror = () => {
         if (settled) return;

@@ -18,6 +18,7 @@ from cute_cat.persistence.models import Garden, Pet
 from cute_cat.services.pet_state import get_pet_for_owner, reconcile_pet_now, snapshot_game_time
 
 router = APIRouter(tags=["pets"])
+SHARED_GARDEN_ID = "gdn_shared_mvp_01"
 
 
 @router.post("/pets/claim", status_code=201, response_model=ClaimPetResponse)
@@ -31,8 +32,10 @@ async def claim_pet(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Pet already claimed")
 
-    gid = new_id("gdn")
-    session.add(Garden(id=gid))
+    gid = SHARED_GARDEN_ID
+    existing_garden = await session.get(Garden, gid)
+    if existing_garden is None:
+        session.add(Garden(id=gid))
 
     anchor = parse_anchor(settings.server_start_wall_clock)
     now = datetime.now(UTC)

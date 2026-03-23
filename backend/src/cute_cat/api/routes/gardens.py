@@ -11,9 +11,10 @@ from cute_cat.api.schemas import WsTicketResponse
 from cute_cat.auth.tokens import create_ws_ticket_jwt
 from cute_cat.config import Settings, get_settings
 from cute_cat.persistence.database import get_session
-from cute_cat.persistence.models import Pet
+from cute_cat.persistence.models import Garden, Pet
 
 router = APIRouter(prefix="/gardens", tags=["gardens"])
+SHARED_GARDEN_ID = "gdn_shared_mvp_01"
 
 
 def _public_ws_base(settings: Settings) -> str:
@@ -25,14 +26,28 @@ def _public_ws_base(settings: Settings) -> str:
     return base
 
 
+async def _ensure_shared_garden_for_user_pet(session: AsyncSession, user_id: str) -> Pet | None:
+    q = await session.execute(select(Pet).where(Pet.owner_user_id == user_id))
+    pet = q.scalar_one_or_none()
+    if pet is None:
+        return None
+    shared = await session.get(Garden, SHARED_GARDEN_ID)
+    if shared is None:
+        session.add(Garden(id=SHARED_GARDEN_ID))
+    if pet.garden_id != SHARED_GARDEN_ID:
+        pet.garden_id = SHARED_GARDEN_ID
+    await session.commit()
+    await session.refresh(pet)
+    return pet
+
+
 @router.get("/ws-ticket", response_model=WsTicketResponse)
 async def ws_ticket(
     user: CurrentUser,
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
 ) -> WsTicketResponse:
-    q = await session.execute(select(Pet).where(Pet.owner_user_id == user.id))
-    pet = q.scalar_one_or_none()
+    pet = await _ensure_shared_garden_for_user_pet(session, user.id)
     if pet is None:
         raise HTTPException(status_code=404, detail="Claim a pet before joining a garden")
 

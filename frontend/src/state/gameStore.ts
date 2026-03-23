@@ -116,6 +116,12 @@ export class GameStore {
     this.notify();
   }
 
+  removeGardenUser(userId: string): void {
+    if (this.state.gardenUsers.delete(userId)) {
+      this.notify();
+    }
+  }
+
   applyPetStateDelta(stats: PetStats, delta: Partial<PetStats>): void {
     this.state.stats = { ...stats };
     const parts = Object.entries(delta)
@@ -185,6 +191,17 @@ export class GameStore {
       const pl = msg.payload as { actorUserId: string; petId: string; actionType: string };
       if (localUserId && pl.actorUserId === localUserId) return;
       this.setRemoteActionBrief({ actorUserId: pl.actorUserId, petId: pl.petId, actionType: pl.actionType });
+      return;
+    }
+    if (
+      msg.type === "userLeft" &&
+      msg.payload &&
+      typeof msg.payload === "object" &&
+      "userId" in msg.payload
+    ) {
+      const pl = msg.payload as { userId: string };
+      if (localUserId && pl.userId === localUserId) return;
+      this.removeGardenUser(pl.userId);
       return;
     }
   }

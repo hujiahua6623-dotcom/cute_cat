@@ -47,6 +47,7 @@ async def register(
         coins=100,
     )
     session.add(user)
+    await session.flush()
 
     opaque = create_refresh_opaque()
     rt_id = new_id("rft")
