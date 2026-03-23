@@ -10,8 +10,10 @@ from cute_cat.api.errors import ApiError, api_error_handler, http_exception_hand
 from cute_cat.api.routes.auth import router as auth_router
 from cute_cat.api.routes.gardens import router as gardens_router
 from cute_cat.api.routes.health import router as health_router
+from cute_cat.api.routes.hospital import router as hospital_router
 from cute_cat.api.routes.me import router as me_router
 from cute_cat.api.routes.pets import router as pets_router
+from cute_cat.api.routes.shop import router as shop_router
 from cute_cat.config import get_settings
 from cute_cat.realtime.garden_ws import router as ws_router
 
@@ -40,6 +42,8 @@ api_router.include_router(auth_router)
 api_router.include_router(me_router)
 api_router.include_router(pets_router)
 api_router.include_router(gardens_router)
+api_router.include_router(shop_router)
+api_router.include_router(hospital_router)
 api_router.include_router(ws_router)
 app.include_router(api_router)
 

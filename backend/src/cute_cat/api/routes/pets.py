@@ -54,6 +54,9 @@ async def claim_pet(
         stats=default_stats(),
         position={"x": 0.5, "y": 0.5},
         sick_window=[],
+        diet_history=[],
+        last_game_day_index=gt.game_day_index,
+        consecutive_stable_days=0,
         state_version=1,
         last_seen_wall_clock=now,
     )
@@ -93,7 +96,11 @@ async def get_pet(
         growthStage=pet.growth_stage,
         gameTime=snapshot_game_time(settings, now),
         stats=pet.stats,
-        stability=stability_snapshot(pet.stats, pet.sick_window or []),
+        stability={
+            **stability_snapshot(pet.stats, pet.sick_window or []),
+            "consecutiveStableDays": pet.consecutive_stable_days,
+            "lastGameDayIndex": pet.last_game_day_index,
+        },
         memory={"summary": "", "milestones": [], "lastUpdatedAt": None},
     )
 

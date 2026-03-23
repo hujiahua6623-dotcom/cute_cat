@@ -9,6 +9,14 @@
 - **后端（周期 0 + 周期 1 切片）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket 与 `Feed`/`Cuddle`/`Pat`；详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
 - **前端（周期 0 + 周期 1）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、节流指针与三动作；本地开发通过 Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
 
+## Current Phase Card（唯一阶段口径）
+
+- Current phase: **周期 2 进行中（后端核心闭环已落地）**
+- Done: 周期 0、周期 1、周期 1A（视觉整合冲刺）
+- In progress focus: 周期 2 联调与回归补证据（前端面板一致性 + 无回退）
+- Evidence source: `doc/开发进度日志.md` 最新日期小节
+- Gate source: `doc/开发周期计划.md`（周期门禁与触发条件）
+
 ## 核心特性（设计中）
 
 - 像素风花园场景与宠物互动（喂食/抱抱/摸头/玩耍/就医）
@@ -62,6 +70,12 @@ npm run dev
 - 开发收尾规范：`doc/开发收尾规范.md`
 - 开发进度日志：`doc/开发进度日志.md`
 - 分周期开发计划：`doc/开发周期计划.md`
+
+## 流程防复发机制
+
+- 阶段真相以本 README 的 "Current Phase Card" 为准；若与 `AGENTS.md` 或日志冲突，需同会话修正。
+- 每次收尾必须执行 `doc/开发收尾规范.md` 的检查清单，并在日志记录“已知风险 -> 解决周期/触发条件”。
+- 任何周期宣告完成前，需在日志提供可追溯证据（构建、测试、脚本或人工走查结果）。
 
 ## UI 参考图
 

@@ -28,6 +28,9 @@ export PYTHONPATH=src
 alembic -c alembic.ini upgrade head
 ```
 
+If you pulled cycle-2 changes, run migrations before starting the server so new columns/tables
+(`diet_history`, `inventories`, etc.) are present in MySQL.
+
 ## Run (development)
 
 ```bash
@@ -53,3 +56,9 @@ python3 -m pytest tests/ -v
 1. Register, claim pet, `GET /api/v1/gardens/ws-ticket` with Bearer token.
 2. Connect to `wsUrl?ticket=<ticket>` from the response.
 3. Send `joinGarden`, then `petAction` / `updatePointer` (see `doc/API-后端与前端对接.md`).
+
+## Cycle 2 core endpoints
+
+- `POST /api/v1/shop/buy`: buy food item with coins and add inventory.
+- `POST /api/v1/hospital/treat`: spend coins to reduce `sickLevel`.
+- `petAction` with `Feed` now requires a valid food `itemId` in inventory.

@@ -91,6 +91,30 @@ class WsTicketResponse(BaseModel):
     gardenId: str
 
 
+class ShopBuyRequest(BaseModel):
+    itemId: str = Field(min_length=1, max_length=64)
+    count: int = Field(default=1, ge=1, le=99)
+
+
+class ShopBuyResponse(BaseModel):
+    itemId: str
+    countAdded: int
+    inventoryCount: int
+    coinsAfter: int
+
+
+class HospitalTreatRequest(BaseModel):
+    petId: str
+
+
+class HospitalTreatResponse(BaseModel):
+    petId: str
+    treatCost: int
+    coinsAfter: int
+    stats: dict[str, int]
+    delta: dict[str, int]
+
+
 class ClientMessage(BaseModel):
     type: str
     requestId: str | None = None

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -48,6 +48,12 @@ class Pet(Base):
 
     # Sliding window sick flags for stability (simplified period-1: last 4 days booleans)
     sick_window: Mapped[list] = mapped_column(JSON, default=list)
+    # Recent feed actions for diet-shift checks (cycle 2)
+    diet_history: Mapped[list] = mapped_column(JSON, default=list)
+    # Last day index processed by growth/day rollup
+    last_game_day_index: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Consecutive days satisfying growth stability rule
+    consecutive_stable_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
     state_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     last_seen_wall_clock: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -64,3 +70,13 @@ class RefreshToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Inventory(Base):
+    __tablename__ = "inventories"
+    __table_args__ = (UniqueConstraint("user_id", "item_id", name="uq_inventories_user_item"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    item_id: Mapped[str] = mapped_column(String(64), index=True)
+    count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

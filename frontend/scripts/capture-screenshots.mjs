@@ -56,7 +56,8 @@ try {
   result.wsJoinPassed = true;
   await page.screenshot({ path: files.garden, fullPage: true });
 
-  await page.click('[data-action="Feed"]');
+  // Use a non-inventory action for stable regression signal.
+  await page.click('[data-action="Cuddle"]');
   const toast = await page.waitForSelector(".toast", { timeout: 8000 }).catch(() => null);
   if (toast) {
     result.actionDeltaPassed = true;

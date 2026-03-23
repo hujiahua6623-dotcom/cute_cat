@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cute_cat.config import Settings
+from cute_cat.game.cycle2 import rollup_growth_days
 from cute_cat.game.stats import ReconcileResult, reconcile_pet_stats
 from cute_cat.game.time import get_game_time, parse_anchor
 from cute_cat.persistence.models import Pet
@@ -25,6 +26,22 @@ def reconcile_pet_now(pet: Pet, settings: Settings, now: datetime | None = None)
     stats_work = copy.deepcopy(pet.stats)
     rec = reconcile_pet_stats(stats_work, pet.last_seen_wall_clock, now)
     pet.stats = rec.after
+
+    anchor = parse_anchor(settings.server_start_wall_clock)
+    now_gt = get_game_time(now, anchor_wall_clock=anchor)
+    sick_window, consecutive, stage, last_day = rollup_growth_days(
+        stats=pet.stats,
+        sick_window=pet.sick_window or [],
+        growth_stage=pet.growth_stage,
+        consecutive_stable_days=pet.consecutive_stable_days,
+        last_game_day_index=pet.last_game_day_index,
+        now_game_day_index=now_gt.game_day_index,
+    )
+    pet.sick_window = sick_window
+    pet.consecutive_stable_days = consecutive
+    pet.growth_stage = stage
+    pet.last_game_day_index = last_day
+
     pet.last_seen_wall_clock = now
     pet.state_version = pet.state_version + 1
     return rec

@@ -5,9 +5,16 @@ This file is the quick-start context for new agent sessions.
 ## Project Snapshot
 
 - Project: `cute_cat` / 小屋里的电子宠物
-- Stage: design-complete, pre-implementation
+- Stage: implementation-in-progress (周期 1/1A 已完成，周期 2 进行中)
 - Architecture: frontend/backend separated
 - Core loop: care pet -> state changes -> growth progression -> events -> rewards
+
+## Current Truth Anchor (Read First)
+
+- Single source for phase/status: `README.md` -> "Current Phase Card"
+- Single source for roadmap and gates: `doc/开发周期计划.md`
+- Single source for chronological facts: `doc/开发进度日志.md`
+- If any of these three disagree, fix docs in the same session before ending work.
 
 ## Confirmed Tech Stack
 
@@ -92,4 +99,19 @@ At the end of each development day/session, always complete all items below.
 5. Session handoff note
    - Ensure next session can continue without guessing:
      - latest status, blockers, and exact next action are written in `doc/开发进度日志.md`
+
+## Anti-Repeat Guardrails (Required)
+
+To avoid repeating process mistakes (doc drift, missing gates, unclear ownership), always run this quick check before ending a session:
+
+1. Status consistency check
+ - `AGENTS.md` stage vs `README.md` current phase card vs latest section in `doc/开发进度日志.md` must match.
+2. Gate consistency check
+ - If a cycle is marked "done", acceptance evidence must exist in `doc/开发进度日志.md` (at least test/build/script/manual trace).
+3. Risk landing check
+ - Any "known risk" mentioned in logs must have one of:
+   - target cycle to resolve, or
+   - explicit trigger condition (when it must be solved), in `doc/开发周期计划.md`.
+4. Next-step singularity check
+ - The latest log entry must include one highest-priority next action (clear owner + scope), not only broad suggestions.
 

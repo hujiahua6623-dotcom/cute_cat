@@ -12,12 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from cute_cat.auth.tokens import decode_ws_ticket
+from cute_cat.game.cycle2 import append_diet_history, has_diet_shift_risk
+from cute_cat.game.economy import get_shop_item
 from cute_cat.config import get_settings
 from cute_cat.game.actions import apply_action
 from cute_cat.game.time import get_game_time, parse_anchor
 from cute_cat.persistence.database import session_factory
 from cute_cat.persistence.models import Pet, User
 from cute_cat.realtime.garden_hub import GardenConnection, hub
+from cute_cat.services.inventory import consume_inventory
 from cute_cat.services.pet_state import reconcile_pet_now, snapshot_game_time
 
 router = APIRouter()
@@ -229,8 +232,35 @@ async def _handle_message(
             return
 
         reconcile_pet_now(pet, settings)
+        anchor = parse_anchor(settings.server_start_wall_clock)
+        gt = get_game_time(datetime.now(UTC), anchor_wall_clock=anchor)
         try:
-            delta, anim_key = apply_action(pet.stats, action_type, item_id=item_id)
+            food_item = None
+            if action_type == "Feed":
+                food_id = str(item_id or "")
+                food_item = get_shop_item(food_id)
+                if food_item is None or food_item.item_type != "food":
+                    raise ValueError("Unsupported itemId for Feed")
+                consumed = await consume_inventory(
+                    session,
+                    user_id=user_id,
+                    item_id=food_item.item_id,
+                    count=1,
+                )
+                if consumed is None:
+                    raise ValueError("Not enough inventory for Feed")
+                pet.diet_history = append_diet_history(
+                    pet.diet_history or [],
+                    game_day_index=gt.game_day_index,
+                    item_id=food_item.item_id,
+                )
+                flag_modified(pet, "diet_history")
+                if has_diet_shift_risk(pet.diet_history, now_day_index=gt.game_day_index):
+                    pet.stats["sickLevel"] = min(3, int(pet.stats["sickLevel"]) + 1)
+                    pet.sick_window = [*list(pet.sick_window or [])[-3:], True]
+                    flag_modified(pet, "sick_window")
+
+            delta, anim_key = apply_action(pet.stats, action_type, item=food_item)
             flag_modified(pet, "stats")
         except ValueError as e:
             await _send_json(
@@ -245,9 +275,6 @@ async def _handle_message(
 
         pet.state_version = pet.state_version + 1
         await session.commit()
-
-        anchor = parse_anchor(settings.server_start_wall_clock)
-        gt = get_game_time(datetime.now(UTC), anchor_wall_clock=anchor)
 
         for target in hub.all_in_garden(gid):
             await _send_json(

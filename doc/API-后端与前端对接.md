@@ -149,10 +149,10 @@
 | GET | `/api/v1/pets/{petId}` | 宠物完整快照 | Bearer |
 | GET | `/api/v1/offline-summary` | 离线摘要与建议动作 | Bearer |
 | GET | `/api/v1/gardens/ws-ticket` | 申请 WebSocket 短期 ticket | Bearer |
+| POST | `/api/v1/shop/buy` | 购买道具并扣费 | Bearer |
+| POST | `/api/v1/hospital/treat` | 医院治疗（扣费 + 缓解病情） | Bearer |
 | GET | `/health` | 健康检查（无前缀） | 无 |
 | GET | `/api/v1/health` | 健康检查（与 API 前缀一致） | 无 |
-
-周期 2+ 可扩展：`/shop/*`、`/hospital/*` 等，落地时在本文件追加表格与示例。
 
 ---
 
@@ -238,7 +238,9 @@
   "stability": {
     "stabilityScore": 0.55,
     "windowGameDays": 4,
-    "sickCountInWindow": 0
+    "sickCountInWindow": 0,
+    "consecutiveStableDays": 1,
+    "lastGameDayIndex": 15
   },
   "memory": {
     "summary": "",
@@ -289,6 +291,76 @@
   "gardenId": "gdn_01jqexample"
 }
 ```
+
+---
+
+## 8A. POST `/api/v1/shop/buy`
+
+购买商店道具，服务端权威扣费并写入库存。
+
+**Request**
+
+```json
+{
+  "itemId": "food_basic_01",
+  "count": 2
+}
+```
+
+**Response `200`**
+
+```json
+{
+  "itemId": "food_basic_01",
+  "countAdded": 2,
+  "inventoryCount": 5,
+  "coinsAfter": 76
+}
+```
+
+**错误**
+
+- `400 BAD_REQUEST`：未知 `itemId` 或余额不足
+
+---
+
+## 8B. POST `/api/v1/hospital/treat`
+
+医院治疗闭环：仅允许治疗自己的宠物，扣费并缓解 `sickLevel`。
+
+**Request**
+
+```json
+{
+  "petId": "pet_01jqexample"
+}
+```
+
+**Response `200`**
+
+```json
+{
+  "petId": "pet_01jqexample",
+  "treatCost": 30,
+  "coinsAfter": 46,
+  "stats": {
+    "hunger": 62,
+    "health": 88,
+    "mood": 65,
+    "loyalty": 42,
+    "sickLevel": 0
+  },
+  "delta": {
+    "health": 10,
+    "sickLevel": -2
+  }
+}
+```
+
+**错误**
+
+- `404 NOT_FOUND`：宠物不存在或不属于当前用户
+- `400 BAD_REQUEST`：宠物未生病或余额不足
 
 ---
 
@@ -384,9 +456,7 @@
 | `gardenId` | string | 房间 id |
 | `actionType` | string | 见 §9.3 |
 | `petId` | string | 目标宠物（MVP 多为自家宠物） |
-| `itemId` | string? | `Feed` 时选食物（**可选**；未传时服务端使用内置演示食物 `food_basic_01`，周期 2 再接入真实库存与扣费） |
-
-**说明（周期 1）**：`itemId` 缺省时效果与 `food_basic_01` 一致；传入未知 `itemId` 时服务端可按默认食物处理或返回 `400`（实现需与前端约定；当前实现为默认演示档）。
+| `itemId` | string? | `Feed` 时必填，且必须是库存中可用的食物道具 |
 
 ```json
 {
@@ -556,3 +626,40 @@
 |------|------|
 | 2026-03-21 | 初版：JWT + refresh、REST、WS、`actionType` 与切片骨架统一为 `Pat` |
 | 2026-03-21 | 补充：`/health` 双路径、`Feed` 可选 `itemId`、`petStateDelta` 同时含 `delta`+`stats`、UTC 与 `PUBLIC_BASE_URL` |
+| 2026-03-24 | 周期 2 核心闭环：新增 `/shop/buy`、`/hospital/treat`；`Feed` 切换为库存驱动并要求有效 `itemId` |
+
+---
+
+## 14. 周期 2 成长面板字段对照清单（前端/测试可直接执行）
+
+目标：让“前端成长面板与后端数据一致”这条验收项可按清单逐项勾选，不依赖口头同步。
+
+### 14.1 后端真值来源
+
+- 主来源：`GET /api/v1/pets/{petId}`
+- 增量来源：`petStateDelta.payload.stats`（发生动作后用于 UI 覆盖）
+
+### 14.2 字段映射（UI <- API）
+
+| UI 字段 | API 路径 | 类型 | 说明 / 判定规则 |
+|---|---|---|---|
+| health | `stats.health` | number (0-100) | 宠物健康值 |
+| mood | `stats.mood` | number (0-100) | 宠物情绪值 |
+| growthStage | `growthStage` | integer | 成长阶段（服务器权威） |
+| stabilityScore | `stability.stabilityScore` | number | 稳定度分数，规则：`0.4*healthStable + 0.6*moodStable` |
+| sickCountInWindow | `stability.sickCountInWindow` | integer (0/1) | 最近窗口是否出现过生病（出现即 1） |
+| windowGameDays | `stability.windowGameDays` | integer | 当前固定为 4 |
+| consecutiveStableDays | `stability.consecutiveStableDays` | integer | 连续稳定天数，用于 K=2 升级判定 |
+| lastGameDayIndex | `stability.lastGameDayIndex` | integer | 最近已结算的游戏日索引 |
+
+### 14.3 最小对照步骤（手工）
+
+1. 登录并进入花园，记录一次 `GET /pets/{petId}` 返回（记为 S0）。
+2. 执行动作（推荐先 `Cuddle`，再 `Feed` with `itemId`），等待对应 `petStateDelta`（记为 D1）。
+3. 面板值应与 `D1.stats` 最终一致；若未收到 `petStateDelta`，则应与最新 `GET /pets/{petId}`（记为 S1）一致。
+4. 至少核对两组快照（前后变化），并在日志记录“截图路径 + 对照结论”。
+
+### 14.4 通过标准
+
+- 关键字段逐项一致：`health`、`mood`、`growthStage`、`stabilityScore`、`consecutiveStableDays`、`lastGameDayIndex`
+- 更新时序允许瞬时延迟，但**最终一致**（以服务端字段为准）

@@ -2,34 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from cute_cat.game.stats import clamp_stat
-
-
-DEFAULT_DEMO_FOOD_ID = "food_basic_01"
+from cute_cat.game.economy import ShopItem
 
 
 def apply_action(
     stats: dict[str, int],
     action_type: str,
     *,
-    item_id: str | None,
+    item: ShopItem | None,
 ) -> tuple[dict[str, int], str]:
     """Mutate stats in place; return (delta, animation_key)."""
     before = dict(stats)
     delta: dict[str, int] = {}
 
     if action_type == "Feed":
-        if item_id is None:
-            item_id = DEFAULT_DEMO_FOOD_ID
-        # Period-1: optional itemId maps to same demo effect unless unknown
-        food_power = 22 if item_id == DEFAULT_DEMO_FOOD_ID else 18
-        stats["hunger"] = stats["hunger"] - food_power
-        stats["mood"] = stats["mood"] + 4
-        stats["loyalty"] = stats["loyalty"] + 2
-        stats["health"] = stats["health"] + 2
-        stats["sickLevel"] = max(0, stats["sickLevel"] - 1)
+        if item is None:
+            raise ValueError("Feed requires a valid food item")
+        stats["hunger"] = stats["hunger"] - item.feed_power
+        stats["mood"] = stats["mood"] + item.mood_bonus
+        stats["loyalty"] = stats["loyalty"] + item.loyalty_bonus
+        stats["health"] = stats["health"] + item.health_bonus
     elif action_type == "Cuddle":
         stats["mood"] = stats["mood"] + 10
         stats["loyalty"] = stats["loyalty"] + 6
