@@ -89,6 +89,10 @@ def test_cycle2_shop_inventory_and_feed_require_item(client_with_db: TestClient)
     r_buy = c.post("/api/v1/shop/buy", headers=headers, json={"itemId": "food_basic_01", "count": 2})
     assert r_buy.status_code == 200, r_buy.text
     assert r_buy.json()["coinsAfter"] == 76
+    r_inv = c.get("/api/v1/shop/inventory", headers=headers)
+    assert r_inv.status_code == 200, r_inv.text
+    items = r_inv.json()["items"]
+    assert any(it["itemId"] == "food_basic_01" and int(it["count"]) == 2 for it in items)
 
     stats = {"hunger": 80, "health": 50, "mood": 50, "loyalty": 40, "sickLevel": 0}
     item = get_shop_item("food_basic_01")
@@ -226,3 +230,38 @@ def test_cycle2_growth_window_rule() -> None:
     assert any(window2)
     assert stage2 == stage
     assert consecutive2 == 0
+
+
+def test_ws_pat_then_cuddle_delta_magnitudes(client_with_db: TestClient) -> None:
+    """Sanity-check apply_action mood deltas over WebSocket (Pat +6, Cuddle +10)."""
+    c = client_with_db
+    headers, pet_id, garden_id = _register_and_claim(c, "pat_cuddle@b.com")
+    rt = c.get("/api/v1/gardens/ws-ticket", headers=headers)
+    assert rt.status_code == 200, rt.text
+    ws_url = f"/api/v1/ws/garden?ticket={rt.json()['ticket']}"
+
+    with c.websocket_connect(ws_url) as ws:
+        ws.send_json({"type": "joinGarden", "requestId": "join-1", "payload": {"gardenId": garden_id}})
+        _ws_recv_until(ws, "gardenSnapshot")
+
+        ws.send_json(
+            {
+                "type": "petAction",
+                "requestId": "pat-1",
+                "payload": {"gardenId": garden_id, "petId": pet_id, "actionType": "Pat"},
+            }
+        )
+        d1 = _ws_recv_until(ws, "petStateDelta")
+        assert d1["payload"]["petId"] == pet_id
+        assert int(d1["payload"]["delta"]["mood"]) == 6
+
+        ws.send_json(
+            {
+                "type": "petAction",
+                "requestId": "cuddle-1",
+                "payload": {"gardenId": garden_id, "petId": pet_id, "actionType": "Cuddle"},
+            }
+        )
+        d2 = _ws_recv_until(ws, "petStateDelta")
+        assert d2["payload"]["petId"] == pet_id
+        assert int(d2["payload"]["delta"]["mood"]) == 10

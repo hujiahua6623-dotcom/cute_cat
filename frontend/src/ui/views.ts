@@ -109,9 +109,16 @@ export interface GardenViewRefs {
   barHunger: HTMLElement;
   barHealth: HTMLElement;
   barMood: HTMLElement;
+  valueHunger: HTMLElement;
+  valueHealth: HTMLElement;
+  valueMood: HTMLElement;
   gardenMeta: HTMLElement;
   growthLine: HTMLElement;
   actionButtons: HTMLButtonElement[];
+  feedSelect: HTMLSelectElement;
+  inventoryList: HTMLElement;
+  shopRows: HTMLDivElement;
+  hospitalTreatBtn: HTMLButtonElement;
   leaveButton: HTMLButtonElement;
 }
 
@@ -125,15 +132,32 @@ export function createGardenView(): GardenViewRefs {
       <aside class="hud panel">
         <div class="meta-line" id="garden-meta"></div>
         <div class="stat-grid">
-          <div class="stat-row"><label>饥饿</label><div class="stat-bar"><span id="bar-hunger" style="width:0%"></span></div></div>
-          <div class="stat-row"><label>健康</label><div class="stat-bar health"><span id="bar-health" style="width:0%"></span></div></div>
-          <div class="stat-row"><label>情绪</label><div class="stat-bar mood"><span id="bar-mood" style="width:0%"></span></div></div>
+          <div class="stat-row"><label>饱腹</label><div class="stat-bar"><span id="bar-hunger" style="width:0%"></span></div><span class="stat-value" id="value-hunger">--</span></div>
+          <div class="stat-row"><label>健康</label><div class="stat-bar health"><span id="bar-health" style="width:0%"></span></div><span class="stat-value" id="value-health">--</span></div>
+          <div class="stat-row"><label>情绪</label><div class="stat-bar mood"><span id="bar-mood" style="width:0%"></span></div><span class="stat-value" id="value-mood">--</span></div>
         </div>
         <div class="meta-line" id="growth-line"></div>
         <div class="action-bar">
           <button type="button" class="btn" data-action="Feed">喂食</button>
           <button type="button" class="btn" data-action="Cuddle">抱抱</button>
           <button type="button" class="btn" data-action="Pat">摸头</button>
+        </div>
+        <div class="field shop-field">
+          <label for="feed-item-select">喂食道具（库存）</label>
+          <select id="feed-item-select">
+            <option value="">请选择库存道具</option>
+          </select>
+        </div>
+        <div class="shop-section">
+          <div class="section-subtitle">商店</div>
+          <div class="shop-rows" id="shop-rows"></div>
+        </div>
+        <div class="shop-section">
+          <div class="section-subtitle">库存</div>
+          <div class="inventory-list" id="inventory-list">暂无库存</div>
+        </div>
+        <div class="action-bar shop-actions">
+          <button type="button" class="btn btn-secondary" id="hospital-treat">去医院治疗</button>
         </div>
         <div class="btn-row hud-foot">
           <button type="button" class="btn btn-secondary" id="leave-garden">退出</button>
@@ -149,9 +173,16 @@ export function createGardenView(): GardenViewRefs {
     barHunger: root.querySelector("#bar-hunger") as HTMLElement,
     barHealth: root.querySelector("#bar-health") as HTMLElement,
     barMood: root.querySelector("#bar-mood") as HTMLElement,
+    valueHunger: root.querySelector("#value-hunger") as HTMLElement,
+    valueHealth: root.querySelector("#value-health") as HTMLElement,
+    valueMood: root.querySelector("#value-mood") as HTMLElement,
     gardenMeta: root.querySelector("#garden-meta") as HTMLElement,
     growthLine: root.querySelector("#growth-line") as HTMLElement,
     actionButtons: [...root.querySelectorAll<HTMLButtonElement>("[data-action]")],
+    feedSelect: root.querySelector("#feed-item-select") as HTMLSelectElement,
+    inventoryList: root.querySelector("#inventory-list") as HTMLElement,
+    shopRows: root.querySelector("#shop-rows") as HTMLDivElement,
+    hospitalTreatBtn: root.querySelector("#hospital-treat") as HTMLButtonElement,
     leaveButton: root.querySelector("#leave-garden") as HTMLButtonElement,
   };
 }

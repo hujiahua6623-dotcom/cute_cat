@@ -8,9 +8,19 @@ function statPercent(v: number): number {
 export function renderGardenHud(state: GameStoreState, view: GardenViewRefs): void {
   const st = state.stats;
   if (st) {
-    view.barHunger.style.width = `${statPercent(st.hunger)}%`;
+    // Hunger stat is "higher = worse"; bar + label show satiety (100 - hunger).
+    const satiety = 100 - st.hunger;
+    const satPct = statPercent(satiety);
+    view.barHunger.style.width = `${satPct}%`;
     view.barHealth.style.width = `${statPercent(st.health)}%`;
     view.barMood.style.width = `${statPercent(st.mood)}%`;
+    view.valueHunger.textContent = `${Math.round(satPct)}`;
+    view.valueHealth.textContent = `${Math.round(statPercent(st.health))}`;
+    view.valueMood.textContent = `${Math.round(statPercent(st.mood))}`;
+  } else {
+    view.valueHunger.textContent = "--";
+    view.valueHealth.textContent = "--";
+    view.valueMood.textContent = "--";
   }
 
   const gt = state.gameTime;
@@ -19,7 +29,7 @@ export function renderGardenHud(state: GameStoreState, view: GardenViewRefs): vo
     : "";
   view.growthLine.textContent =
     state.growthStage !== null && state.stabilityScore !== null
-      ? `成长阶段 ${state.growthStage} · 稳定度 ${state.stabilityScore.toFixed(2)}`
+      ? `成长阶段 ${state.growthStage} · 稳定度 ${state.stabilityScore.toFixed(2)} · 连稳 ${state.consecutiveStableDays ?? "-"} · 窗口病史 ${state.sickCountInWindow ?? "-"} · 窗口天数 ${state.windowGameDays ?? "-"} · 最近结算日 ${state.lastGameDayIndex ?? "-"}`
       : "";
 }
 

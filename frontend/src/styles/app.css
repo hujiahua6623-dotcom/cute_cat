@@ -224,6 +224,13 @@ body {
   color: var(--color-text-muted);
 }
 
+.stat-value {
+  width: 36px;
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
 .stat-bar {
   flex: 1;
   height: 14px;
@@ -262,6 +269,58 @@ body {
 
 .action-bar .btn {
   flex: 1 1 90px;
+}
+
+.shop-field {
+  margin-top: 10px;
+}
+
+.section-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 10px 0 6px;
+}
+
+.shop-section {
+  margin-top: 6px;
+}
+
+.shop-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.shop-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px;
+  background: #fffdf7;
+}
+
+.shop-row-title {
+  font-size: 0.9rem;
+}
+
+.shop-row-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.inventory-list {
+  border: 2px solid var(--color-border);
+  border-radius: 6px;
+  padding: 8px;
+  background: #fffdf7;
+  font-size: 0.85rem;
+  min-height: 42px;
+}
+
+.shop-actions .btn {
+  flex: 1 1 180px;
 }
 
 .hud-foot {

@@ -20,12 +20,30 @@ async def get_pet_for_owner(session: AsyncSession, owner_id: str, pet_id: str) -
     return q.scalar_one_or_none()
 
 
-def reconcile_pet_now(pet: Pet, settings: Settings, now: datetime | None = None) -> ReconcileResult:
-    """Apply passive decay from last_seen to now and bump version."""
+def reconcile_pet_now(
+    pet: Pet,
+    settings: Settings,
+    now: datetime | None = None,
+    *,
+    apply_passive_decay: bool = True,
+) -> ReconcileResult:
+    """Apply passive decay from last_seen to now and bump version.
+
+    WebSocket `petAction` uses `apply_passive_decay=False`: joinGarden and HTTP GET
+    already reconciled offline time; running passive decay again here used wall-clock
+    gaps that could zero mood between rapid actions.
+    """
     now = now or datetime.now(UTC)
-    stats_work = copy.deepcopy(pet.stats)
-    rec = reconcile_pet_stats(stats_work, pet.last_seen_wall_clock, now)
-    pet.stats = rec.after
+    if apply_passive_decay:
+        stats_work = copy.deepcopy(pet.stats)
+        rec = reconcile_pet_stats(stats_work, pet.last_seen_wall_clock, now)
+        pet.stats = rec.after
+    else:
+        norm = copy.deepcopy(pet.stats)
+        for k, v in list(norm.items()):
+            norm[k] = int(v)
+        pet.stats = norm
+        rec = ReconcileResult(before=copy.deepcopy(norm), after=copy.deepcopy(norm), elapsed_game_hours=0.0)
 
     anchor = parse_anchor(settings.server_start_wall_clock)
     now_gt = get_game_time(now, anchor_wall_clock=anchor)

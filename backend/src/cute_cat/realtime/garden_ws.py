@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from datetime import UTC, datetime
 from typing import Any
 
@@ -115,7 +116,9 @@ async def _handle_message(
             )
             return
 
-        q = await session.execute(select(Pet).where(Pet.garden_id == gid))
+        # Lock all garden pets so joinGarden reconcile+commit cannot interleave with
+        # petAction commits and overwrite newer stats (lost updates on JSON stats).
+        q = await session.execute(select(Pet).where(Pet.garden_id == gid).with_for_update())
         pets = list(q.scalars().all())
         for p in pets:
             reconcile_pet_now(p, settings)
@@ -139,6 +142,7 @@ async def _handle_message(
                     "skinSeed": p.skin_seed,
                     "position": p.position,
                     "stats": p.stats,
+                    "stateVersion": p.state_version,
                 }
             )
 
@@ -198,7 +202,10 @@ async def _handle_message(
             )
             return
 
-        pet = await session.get(Pet, pet_id)
+        # Serialize mutations per pet so concurrent petAction (e.g. two tabs) cannot
+        # both read stale stats and overwrite each other's apply_action results.
+        res = await session.execute(select(Pet).where(Pet.id == pet_id).with_for_update())
+        pet = res.scalar_one_or_none()
         if pet is None or pet.garden_id != gid:
             await _send_json(
                 websocket,
@@ -231,7 +238,7 @@ async def _handle_message(
             )
             return
 
-        reconcile_pet_now(pet, settings)
+        reconcile_pet_now(pet, settings, apply_passive_decay=False)
         anchor = parse_anchor(settings.server_start_wall_clock)
         gt = get_game_time(datetime.now(UTC), anchor_wall_clock=anchor)
         try:
@@ -260,7 +267,13 @@ async def _handle_message(
                     pet.sick_window = [*list(pet.sick_window or [])[-3:], True]
                     flag_modified(pet, "sick_window")
 
-            delta, anim_key = apply_action(pet.stats, action_type, item=food_item)
+            # Replace JSON column by assignment: in-place mutation of pet.stats may not persist
+            # on some DB+SQLAlchemy combos, so the next petAction reads stale mood (lost updates).
+            work = copy.deepcopy(pet.stats)
+            for _k in list(work.keys()):
+                work[_k] = int(work[_k])
+            delta, anim_key = apply_action(work, action_type, item=food_item)
+            pet.stats = work
             flag_modified(pet, "stats")
         except ValueError as e:
             await _send_json(
@@ -274,6 +287,7 @@ async def _handle_message(
             return
 
         pet.state_version = pet.state_version + 1
+        await session.flush()
         await session.commit()
 
         for target in hub.all_in_garden(gid):

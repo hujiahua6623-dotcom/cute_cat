@@ -9,9 +9,15 @@ export interface GameStoreState {
   gardenId: string | null;
   /** Latest pet stats (REST + petStateDelta). */
   stats: PetStats | null;
+  /** Last applied server `state_version` for own pet; snapshot/delta sync. */
+  statsVersion: number | null;
   gameTime: GameTimePayload | null;
   growthStage: number | null;
   stabilityScore: number | null;
+  consecutiveStableDays: number | null;
+  lastGameDayIndex: number | null;
+  sickCountInWindow: number | null;
+  windowGameDays: number | null;
   /** Other users in garden (from snapshot + pointer updates). */
   gardenUsers: Map<string, GardenUserWire>;
   wsStatus: WsUiStatus;
@@ -27,9 +33,14 @@ function initialState(): GameStoreState {
     petId: null,
     gardenId: null,
     stats: null,
+    statsVersion: null,
     gameTime: null,
     growthStage: null,
     stabilityScore: null,
+    consecutiveStableDays: null,
+    lastGameDayIndex: null,
+    sickCountInWindow: null,
+    windowGameDays: null,
     gardenUsers: new Map(),
     wsStatus: "idle",
     lastRemoteAction: null,
@@ -82,11 +93,20 @@ export class GameStore {
     gameTime: GameTimePayload;
     growthStage: number;
     stabilityScore: number;
+    consecutiveStableDays: number;
+    lastGameDayIndex: number;
+    sickCountInWindow: number;
+    windowGameDays: number;
   }): void {
     this.state.stats = { ...data.stats };
+    this.state.statsVersion = null;
     this.state.gameTime = { ...data.gameTime };
     this.state.growthStage = data.growthStage;
     this.state.stabilityScore = data.stabilityScore;
+    this.state.consecutiveStableDays = data.consecutiveStableDays;
+    this.state.lastGameDayIndex = data.lastGameDayIndex;
+    this.state.sickCountInWindow = data.sickCountInWindow;
+    this.state.windowGameDays = data.windowGameDays;
     this.notify();
   }
 
@@ -122,8 +142,11 @@ export class GameStore {
     }
   }
 
-  applyPetStateDelta(stats: PetStats, delta: Partial<PetStats>): void {
+  applyPetStateDelta(stats: PetStats, delta: Partial<PetStats>, opts?: { nextStatsVersion?: number }): void {
     this.state.stats = { ...stats };
+    if (opts?.nextStatsVersion !== undefined) {
+      this.state.statsVersion = opts.nextStatsVersion;
+    }
     const parts = Object.entries(delta)
       .filter(([, v]) => v !== undefined && v !== 0)
       .map(([k, v]) => `${k} ${v !== undefined && Number(v) > 0 ? "+" : ""}${v}`)
@@ -131,6 +154,12 @@ export class GameStore {
     if (parts.length) {
       this.state.toastMessage = parts.join(" · ");
     }
+    this.notify();
+  }
+
+  overwriteStats(stats: PetStats): void {
+    this.state.stats = { ...stats };
+    this.state.statsVersion = null;
     this.notify();
   }
 
@@ -155,6 +184,9 @@ export class GameStore {
       const mine = p.pets.find((pet) => pet.petId === this.state.petId);
       if (mine) {
         this.state.stats = { ...mine.stats };
+        if (typeof mine.stateVersion === "number") {
+          this.state.statsVersion = mine.stateVersion;
+        }
       }
       this.notify();
       return;
@@ -176,10 +208,13 @@ export class GameStore {
       typeof msg.payload === "object" &&
       "stats" in msg.payload
     ) {
-      const pl = msg.payload as { petId: string; delta: Partial<PetStats>; stats: PetStats };
-      if (pl.petId === this.state.petId) {
-        this.applyPetStateDelta(pl.stats, pl.delta);
-      }
+      const pl = msg.payload as { petId: string; version?: number; delta: Partial<PetStats>; stats: PetStats };
+      const v = typeof pl.version === "number" ? pl.version : null;
+      const localPid = this.state.petId;
+      if (!localPid || pl.petId !== localPid) return;
+      // Always apply server `stats` for own pet (single WS preserves order). Skipping by
+      // version caused lost updates when ordering/snapshot/version bookkeeping disagreed.
+      this.applyPetStateDelta(pl.stats, pl.delta, v !== null ? { nextStatsVersion: v } : undefined);
       return;
     }
     if (

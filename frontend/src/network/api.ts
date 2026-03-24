@@ -1,9 +1,12 @@
 import { httpJson } from "./httpClient";
 import type {
   ClaimPetResponse,
+  HospitalTreatResponse,
+  InventoryListResponse,
   MeResponse,
   OfflineSummaryResponse,
   PetSnapshotResponse,
+  ShopBuyResponse,
   TokenResponse,
 } from "./types";
 
@@ -38,4 +41,22 @@ export async function getPet(petId: string): Promise<PetSnapshotResponse> {
 
 export async function getOfflineSummary(petId: string): Promise<OfflineSummaryResponse> {
   return httpJson<OfflineSummaryResponse>(`/offline-summary?petId=${encodeURIComponent(petId)}`);
+}
+
+export async function shopBuy(itemId: string, count = 1): Promise<ShopBuyResponse> {
+  return httpJson<ShopBuyResponse>("/shop/buy", {
+    method: "POST",
+    body: { itemId, count },
+  });
+}
+
+export async function getInventory(): Promise<InventoryListResponse> {
+  return httpJson<InventoryListResponse>("/shop/inventory");
+}
+
+export async function hospitalTreat(petId: string): Promise<HospitalTreatResponse> {
+  return httpJson<HospitalTreatResponse>("/hospital/treat", {
+    method: "POST",
+    body: { petId },
+  });
 }

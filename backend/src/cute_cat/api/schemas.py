@@ -103,6 +103,15 @@ class ShopBuyResponse(BaseModel):
     coinsAfter: int
 
 
+class InventoryItemResponse(BaseModel):
+    itemId: str
+    count: int
+
+
+class InventoryListResponse(BaseModel):
+    items: list[InventoryItemResponse]
+
+
 class HospitalTreatRequest(BaseModel):
     petId: str
 

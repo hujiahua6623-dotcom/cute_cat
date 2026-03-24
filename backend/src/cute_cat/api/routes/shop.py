@@ -5,12 +5,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from cute_cat.api.deps import CurrentUser
 from cute_cat.api.errors import ApiError
-from cute_cat.api.schemas import ShopBuyRequest, ShopBuyResponse
+from cute_cat.api.schemas import (
+    InventoryItemResponse,
+    InventoryListResponse,
+    ShopBuyRequest,
+    ShopBuyResponse,
+)
 from cute_cat.game.economy import get_shop_item
 from cute_cat.persistence.database import get_session
-from cute_cat.services.inventory import add_inventory
+from cute_cat.services.inventory import add_inventory, list_inventories
 
 router = APIRouter(prefix="/shop", tags=["shop"])
+
+
+@router.get("/inventory", response_model=InventoryListResponse)
+async def get_inventory_list(
+    user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+) -> InventoryListResponse:
+    rows = await list_inventories(session, user_id=user.id)
+    return InventoryListResponse(
+        items=[InventoryItemResponse(itemId=row.item_id, count=int(row.count)) for row in rows]
+    )
 
 
 @router.post("/buy", response_model=ShopBuyResponse)

@@ -149,6 +149,7 @@
 | GET | `/api/v1/pets/{petId}` | 宠物完整快照 | Bearer |
 | GET | `/api/v1/offline-summary` | 离线摘要与建议动作 | Bearer |
 | GET | `/api/v1/gardens/ws-ticket` | 申请 WebSocket 短期 ticket | Bearer |
+| GET | `/api/v1/shop/inventory` | 获取当前用户库存列表 | Bearer |
 | POST | `/api/v1/shop/buy` | 购买道具并扣费 | Bearer |
 | POST | `/api/v1/hospital/treat` | 医院治疗（扣费 + 缓解病情） | Bearer |
 | GET | `/health` | 健康检查（无前缀） | 无 |
@@ -294,7 +295,24 @@
 
 ---
 
-## 8A. POST `/api/v1/shop/buy`
+## 8A. GET `/api/v1/shop/inventory`
+
+获取当前用户已有库存（可用于前端初始化库存面板）。
+
+**Response `200`**
+
+```json
+{
+  "items": [
+    { "itemId": "food_basic_01", "count": 3 },
+    { "itemId": "food_fancy_01", "count": 1 }
+  ]
+}
+```
+
+---
+
+## 8B. POST `/api/v1/shop/buy`
 
 购买商店道具，服务端权威扣费并写入库存。
 
@@ -324,7 +342,7 @@
 
 ---
 
-## 8B. POST `/api/v1/hospital/treat`
+## 8C. POST `/api/v1/hospital/treat`
 
 医院治疗闭环：仅允许治疗自己的宠物，扣费并缓解 `sickLevel`。
 
@@ -627,6 +645,7 @@
 | 2026-03-21 | 初版：JWT + refresh、REST、WS、`actionType` 与切片骨架统一为 `Pat` |
 | 2026-03-21 | 补充：`/health` 双路径、`Feed` 可选 `itemId`、`petStateDelta` 同时含 `delta`+`stats`、UTC 与 `PUBLIC_BASE_URL` |
 | 2026-03-24 | 周期 2 核心闭环：新增 `/shop/buy`、`/hospital/treat`；`Feed` 切换为库存驱动并要求有效 `itemId` |
+| 2026-03-24 | 补充库存读取接口：新增 `GET /shop/inventory`，用于前端库存面板服务端真值初始化 |
 
 ---
 

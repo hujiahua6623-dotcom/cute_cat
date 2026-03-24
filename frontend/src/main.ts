@@ -120,6 +120,7 @@ let wsUnsub: (() => void) | null = null;
 let toastUnsub: (() => void) | null = null;
 let pointerCleanup: (() => void) | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let inventorySyncTimer: ReturnType<typeof setInterval> | null = null;
 /** Set true when user leaves garden; blocks scheduled reconnect. */
 let gardenSessionCancelled = false;
 
@@ -135,6 +136,10 @@ function destroyGardenRuntime(): void {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
+  }
+  if (inventorySyncTimer) {
+    clearInterval(inventorySyncTimer);
+    inventorySyncTimer = null;
   }
   pointerCleanup?.();
   pointerCleanup = null;
@@ -161,6 +166,10 @@ async function enterGarden(): Promise<void> {
     gameTime: pet.gameTime,
     growthStage: pet.growthStage,
     stabilityScore: pet.stability.stabilityScore,
+    consecutiveStableDays: pet.stability.consecutiveStableDays,
+    lastGameDayIndex: pet.stability.lastGameDayIndex,
+    sickCountInWindow: pet.stability.sickCountInWindow,
+    windowGameDays: pet.stability.windowGameDays,
   });
 
   const offline = await api.getOfflineSummary(me.petId);
@@ -169,8 +178,96 @@ async function enterGarden(): Promise<void> {
   gardenSessionCancelled = false;
   clearView();
   const view = createGardenView();
-  const { root, wsBar, actionButtons, leaveButton } = view;
+  const { root, wsBar, actionButtons, feedSelect, inventoryList, shopRows, hospitalTreatBtn, leaveButton } = view;
   app.appendChild(root);
+  const shopCatalog = [
+    { itemId: "food_basic_01", label: "基础口粮", price: 12 },
+    { itemId: "food_fancy_01", label: "精致盛宴", price: 26 },
+  ] as const;
+  const inventory = new Map<string, number>(shopCatalog.map((it) => [it.itemId, 0]));
+  let inventorySyncToken = 0;
+
+  const renderInventoryUi = (): void => {
+    const lines = shopCatalog.map((it) => `${it.label} (${it.itemId}) × ${inventory.get(it.itemId) ?? 0}`);
+    inventoryList.innerHTML = lines.map((line) => `<div>${line}</div>`).join("");
+
+    const prev = feedSelect.value;
+    const options = ['<option value="">请选择库存道具</option>'];
+    for (const it of shopCatalog) {
+      const count = inventory.get(it.itemId) ?? 0;
+      if (count > 0) {
+        options.push(`<option value="${it.itemId}">${it.label} (${count})</option>`);
+      }
+    }
+    feedSelect.innerHTML = options.join("");
+    if (prev && (inventory.get(prev) ?? 0) > 0) {
+      feedSelect.value = prev;
+    }
+  };
+
+  const bumpInventory = (itemId: string, delta: number): void => {
+    const next = Math.max(0, (inventory.get(itemId) ?? 0) + delta);
+    inventory.set(itemId, next);
+    renderInventoryUi();
+  };
+
+  const syncInventoryFromServer = async (): Promise<void> => {
+    const token = ++inventorySyncToken;
+    try {
+      const inv = await api.getInventory();
+      if (token !== inventorySyncToken) return;
+      for (const it of shopCatalog) {
+        inventory.set(it.itemId, 0);
+      }
+      for (const row of inv.items) {
+        if (inventory.has(row.itemId)) {
+          inventory.set(row.itemId, Math.max(0, Number(row.count) || 0));
+        }
+      }
+      renderInventoryUi();
+    } catch {
+      // Keep current inventory view when transient sync failed.
+    }
+  };
+
+  for (const it of shopCatalog) {
+    const row = document.createElement("div");
+    row.className = "shop-row";
+    row.innerHTML = `
+      <div>
+        <div class="shop-row-title">${it.label}</div>
+        <div class="shop-row-meta">${it.itemId} · ${it.price} 金币</div>
+      </div>
+    `;
+    const buyBtn = document.createElement("button");
+    buyBtn.type = "button";
+    buyBtn.className = "btn btn-secondary";
+    buyBtn.textContent = "购买";
+    buyBtn.addEventListener("click", async () => {
+      buyBtn.disabled = true;
+      buyBtn.classList.add("loading");
+      try {
+        const res = await api.shopBuy(it.itemId, 1);
+        inventory.set(res.itemId, res.inventoryCount);
+        renderInventoryUi();
+        showActionToast(`购买成功：${it.label}（库存 ${res.inventoryCount}）`);
+        void syncInventoryFromServer();
+      } catch (err) {
+        const msg = err instanceof ApiRequestError ? `${err.code}: ${err.message}` : String(err);
+        showActionToast(`购买失败：${msg}`);
+      } finally {
+        buyBtn.disabled = false;
+        buyBtn.classList.remove("loading");
+      }
+    });
+    row.appendChild(buyBtn);
+    shopRows.appendChild(row);
+  }
+  await syncInventoryFromServer();
+  inventorySyncTimer = setInterval(() => {
+    if (gardenSessionCancelled) return;
+    void syncInventoryFromServer();
+  }, 5000);
 
   const syncHud = (): void => {
     renderGardenHud(store.getState(), view);
@@ -241,8 +338,42 @@ async function enterGarden(): Promise<void> {
     btn.addEventListener("click", () => {
       const actionType = btn.dataset.action;
       if (!actionType || !me.petId || !activeGardenId || !wsClient) return;
+      if (actionType === "Feed") {
+        const selectedFeedItemId = feedSelect.value || null;
+        if (!selectedFeedItemId) {
+          showActionToast("请先购买食物，再喂食");
+          return;
+        }
+        if ((inventory.get(selectedFeedItemId) ?? 0) <= 0) {
+          showActionToast("该道具库存不足，请先购买");
+          return;
+        }
+        wsClient.petAction(activeGardenId, me.petId, actionType, nextRequestId(), selectedFeedItemId);
+        bumpInventory(selectedFeedItemId, -1);
+        setTimeout(() => {
+          void syncInventoryFromServer();
+        }, 500);
+        return;
+      }
       wsClient.petAction(activeGardenId, me.petId, actionType, nextRequestId());
     });
+  });
+
+  hospitalTreatBtn.addEventListener("click", async () => {
+    if (!me.petId) return;
+    hospitalTreatBtn.disabled = true;
+    hospitalTreatBtn.classList.add("loading");
+    try {
+      const res = await api.hospitalTreat(me.petId);
+      store.overwriteStats(res.stats);
+      showActionToast(`治疗成功：花费 ${res.treatCost}，剩余金币 ${res.coinsAfter}`);
+    } catch (err) {
+      const msg = err instanceof ApiRequestError ? `${err.code}: ${err.message}` : String(err);
+      showActionToast(`治疗失败：${msg}`);
+    } finally {
+      hospitalTreatBtn.disabled = false;
+      hospitalTreatBtn.classList.remove("loading");
+    }
   });
 
   const connectWs = async (): Promise<void> => {

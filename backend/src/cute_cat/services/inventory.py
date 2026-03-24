@@ -14,6 +14,13 @@ async def get_inventory(session: AsyncSession, user_id: str, item_id: str) -> In
     return q.scalar_one_or_none()
 
 
+async def list_inventories(session: AsyncSession, user_id: str) -> list[Inventory]:
+    q = await session.execute(
+        select(Inventory).where(Inventory.user_id == user_id).order_by(Inventory.item_id.asc())
+    )
+    return list(q.scalars().all())
+
+
 async def add_inventory(
     session: AsyncSession,
     *,

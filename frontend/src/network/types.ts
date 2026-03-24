@@ -57,8 +57,34 @@ export interface PetSnapshotResponse {
     stabilityScore: number;
     windowGameDays: number;
     sickCountInWindow: number;
+    consecutiveStableDays: number;
+    lastGameDayIndex: number;
   };
   memory: { summary: string; milestones: unknown[]; lastUpdatedAt: string | null };
+}
+
+export interface ShopBuyResponse {
+  itemId: string;
+  countAdded: number;
+  inventoryCount: number;
+  coinsAfter: number;
+}
+
+export interface InventoryItem {
+  itemId: string;
+  count: number;
+}
+
+export interface InventoryListResponse {
+  items: InventoryItem[];
+}
+
+export interface HospitalTreatResponse {
+  petId: string;
+  treatCost: number;
+  coinsAfter: number;
+  stats: PetStats;
+  delta: Partial<PetStats>;
 }
 
 export interface OfflineSummaryResponse {
@@ -84,6 +110,8 @@ export interface GardenPetWire {
   skinSeed: number;
   position: { x: number; y: number };
   stats: PetStats;
+  /** Server monotonic version; used to ignore stale petStateDelta. */
+  stateVersion?: number;
 }
 
 export interface GardenUserWire {
@@ -121,5 +149,6 @@ export type WsServerMessage =
       };
     }
   | { type: "petStateDelta"; payload: { petId: string; version: number; delta: Partial<PetStats>; stats: PetStats } }
+  | { type: "userLeft"; payload: { gardenId: string; userId: string } }
   | { type: "error"; requestId?: string; payload: { code: string; message: string } }
   | { type: string; requestId?: string; payload?: unknown };
