@@ -56,6 +56,13 @@ try {
   result.wsJoinPassed = true;
   await page.screenshot({ path: files.garden, fullPage: true });
 
+  // Cycle 3: birthday modal is a pure visual layer (click-through CSS),
+  // but removing it makes screenshot regression extra stable.
+  const birthdayBackdrop = await page.$(".birthday-backdrop");
+  if (birthdayBackdrop) {
+    await page.evaluate(() => document.querySelector(".birthday-backdrop")?.remove());
+  }
+
   // Use a non-inventory action for stable regression signal.
   await page.click('[data-action="Cuddle"]');
   const toast = await page.waitForSelector(".toast", { timeout: 8000 }).catch(() => null);

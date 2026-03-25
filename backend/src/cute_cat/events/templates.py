@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from cute_cat.events.constants import (
     BIRTHDAY_CUDDLE_TARGET,
+    DAILY_PAT_TARGET,
     SOCIAL_FEED_TARGET,
     TEMPLATE_BIRTHDAY_V1,
+    TEMPLATE_DAILY_V1,
     TEMPLATE_SOCIAL_V1,
 )
 
@@ -34,9 +36,25 @@ def social_tasks_wire() -> list[dict[str, object]]:
     ]
 
 
+def daily_tasks_wire() -> list[dict[str, object]]:
+    return [
+        {
+            "taskId": "pat_count",
+            "label": "每日摸头",
+            "current": 0,
+            "target": DAILY_PAT_TARGET,
+            "scope": "pet",
+        }
+    ]
+
+
 def birthday_template_id() -> str:
     return TEMPLATE_BIRTHDAY_V1
 
 
 def social_template_id() -> str:
     return TEMPLATE_SOCIAL_V1
+
+
+def daily_template_id() -> str:
+    return TEMPLATE_DAILY_V1

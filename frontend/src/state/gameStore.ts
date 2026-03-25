@@ -1,10 +1,11 @@
-import type { GameTimePayload, GardenUserWire, PetStats, WsServerMessage } from "../network/types";
+import type { GardenEventWire, GameTimePayload, GardenUserWire, PetStats, WsServerMessage } from "../network/types";
 
 export type WsUiStatus = "idle" | "connecting" | "open" | "disconnected" | "reconnecting";
 
 export interface GameStoreState {
   userId: string | null;
   nickname: string | null;
+  coins: number | null;
   petId: string | null;
   gardenId: string | null;
   /** Latest pet stats (REST + petStateDelta). */
@@ -20,6 +21,16 @@ export interface GameStoreState {
   windowGameDays: number | null;
   /** Other users in garden (from snapshot + pointer updates). */
   gardenUsers: Map<string, GardenUserWire>;
+
+  /** Cycle 3: event system (SSOT init + eventBroadcast merge). */
+  activeEvents: Map<string, GardenEventWire>;
+
+  /**
+   * Cycle 3: ensure birthday modal "open" only once per eventId.
+   * Updates after open (tick/ended) should still refresh the modal content.
+   */
+  birthdayModalShownEventIds: Set<string>;
+
   wsStatus: WsUiStatus;
   /** Last action broadcast from *others* (for optional animation); own actions use local feedback. */
   lastRemoteAction: { actionType: string; actorUserId: string; petId: string } | null;
@@ -30,6 +41,7 @@ function initialState(): GameStoreState {
   return {
     userId: null,
     nickname: null,
+    coins: null,
     petId: null,
     gardenId: null,
     stats: null,
@@ -42,6 +54,8 @@ function initialState(): GameStoreState {
     sickCountInWindow: null,
     windowGameDays: null,
     gardenUsers: new Map(),
+    activeEvents: new Map(),
+    birthdayModalShownEventIds: new Set(),
     wsStatus: "idle",
     lastRemoteAction: null,
     toastMessage: null,
@@ -76,9 +90,23 @@ export class GameStore {
     this.notify();
   }
 
-  setUser(me: { userId: string; nickname: string }): void {
+  setUser(me: { userId: string; nickname: string; coins?: number }): void {
     this.state.userId = me.userId;
     this.state.nickname = me.nickname;
+    if (typeof me.coins === "number") {
+      this.state.coins = me.coins;
+    }
+    this.notify();
+  }
+
+  setCoins(coins: number): void {
+    this.state.coins = Math.max(0, Math.floor(coins));
+    this.notify();
+  }
+
+  addCoins(delta: number): void {
+    const base = this.state.coins ?? 0;
+    this.state.coins = Math.max(0, Math.floor(base + delta));
     this.notify();
   }
 
@@ -173,6 +201,17 @@ export class GameStore {
     this.notify();
   }
 
+  /** Returns true exactly once per eventId. */
+  tryConsumeBirthdayModal(eventId: string): boolean {
+    if (this.state.birthdayModalShownEventIds.has(eventId)) return false;
+    this.state.birthdayModalShownEventIds.add(eventId);
+    return true;
+  }
+
+  isBirthdayModalShown(eventId: string): boolean {
+    return this.state.birthdayModalShownEventIds.has(eventId);
+  }
+
   /**
    * Apply WebSocket payloads; keeps `petStateDelta` as source of truth for stats.
    */
@@ -181,6 +220,10 @@ export class GameStore {
       const p = msg.payload as import("../network/types").GardenSnapshotPayload;
       this.state.gameTime = { ...p.gameTime };
       this.setGardenUsersFromSnapshot(p.users);
+
+      // SSOT init for cycle 3 UI.
+      this.state.activeEvents = new Map(p.activeEvents?.map((e) => [e.eventId, e]) ?? []);
+
       const mine = p.pets.find((pet) => pet.petId === this.state.petId);
       if (mine) {
         this.state.stats = { ...mine.stats };
@@ -226,6 +269,17 @@ export class GameStore {
       const pl = msg.payload as { actorUserId: string; petId: string; actionType: string };
       if (localUserId && pl.actorUserId === localUserId) return;
       this.setRemoteActionBrief({ actorUserId: pl.actorUserId, petId: pl.petId, actionType: pl.actionType });
+      return;
+    }
+
+    if (msg.type === "eventBroadcast" && msg.payload && typeof msg.payload === "object" && "eventId" in msg.payload) {
+      const ev = msg.payload as GardenEventWire;
+      if (!ev.eventId) return;
+      const prev = this.state.activeEvents.get(ev.eventId);
+      // Shallow merge: tick payload updates tasks, ended payload adds rewardsGranted
+      // while keeping previous tasks (when `tasks` is omitted).
+      this.state.activeEvents.set(ev.eventId, prev ? ({ ...prev, ...ev } as GardenEventWire) : ev);
+      this.notify();
       return;
     }
     if (

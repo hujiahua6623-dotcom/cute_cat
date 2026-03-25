@@ -11,14 +11,17 @@ from sqlalchemy.orm.attributes import flag_modified
 from cute_cat.events.constants import (
     BIRTHDAY_CUDDLE_TARGET,
     BIRTHDAY_REWARD_COINS,
+    DAILY_PAT_TARGET,
+    DAILY_REWARD_COINS,
     SOCIAL_FEED_TARGET,
     SOCIAL_REWARD_COINS,
     TEMPLATE_BIRTHDAY_V1,
+    TEMPLATE_DAILY_V1,
     TEMPLATE_SOCIAL_V1,
 )
 from cute_cat.events.progress_repo import get_or_create_for_update
 from cute_cat.events.rules import is_birthday_anniversary_day, social_window_bounds
-from cute_cat.events.templates import birthday_tasks_wire, social_tasks_wire
+from cute_cat.events.templates import birthday_tasks_wire, daily_tasks_wire, social_tasks_wire
 from cute_cat.game.time import GameTime
 from cute_cat.persistence.models import Pet, User
 
@@ -26,6 +29,8 @@ from cute_cat.persistence.models import Pet, User
 def _wire_tasks_from_progress(kind: str, prog_dict: dict[str, Any]) -> list[dict[str, Any]]:
     if kind == "social":
         base = social_tasks_wire()
+    elif kind == "daily":
+        base = daily_tasks_wire()
     else:
         base = birthday_tasks_wire()
     out = []
@@ -133,6 +138,50 @@ async def apply_event_hooks_after_action(
                     "petId": pet.id,
                     "ownerUserId": pet.owner_user_id,
                     "rewardsGranted": {"coins": BIRTHDAY_REWARD_COINS},
+                }
+            )
+
+    if action_type == "Pat":
+        anchor = f"daily:{pet.id}:{day}"
+        row = await get_or_create_for_update(
+            session, garden_id=garden_id, anchor_key=anchor, event_kind="daily", pet_id=pet.id
+        )
+        if row.completed:
+            return out
+        p = dict(row.progress or {})
+        p["pat_count"] = int(p.get("pat_count", 0)) + 1
+        row.progress = p
+        flag_modified(row, "progress")
+        event_id = f"evt_daily_{pet.id}_{day}"
+        out.append(
+            {
+                "eventId": event_id,
+                "eventType": "daily",
+                "phase": "tick",
+                "templateId": TEMPLATE_DAILY_V1,
+                "gardenId": garden_id,
+                "petId": pet.id,
+                "ownerUserId": pet.owner_user_id,
+                "title": "每日互动任务",
+                "message": "每日摸头进度已更新",
+                "tasks": _wire_tasks_from_progress("daily", p),
+            }
+        )
+        if p["pat_count"] >= DAILY_PAT_TARGET:
+            row.completed = True
+            u = await session.get(User, pet.owner_user_id)
+            if u is not None:
+                u.coins = int(u.coins) + DAILY_REWARD_COINS
+            out.append(
+                {
+                    "eventId": event_id,
+                    "eventType": "daily",
+                    "phase": "ended",
+                    "templateId": TEMPLATE_DAILY_V1,
+                    "gardenId": garden_id,
+                    "petId": pet.id,
+                    "ownerUserId": pet.owner_user_id,
+                    "rewardsGranted": {"coins": DAILY_REWARD_COINS},
                 }
             )
 

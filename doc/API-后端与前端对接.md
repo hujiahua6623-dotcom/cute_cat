@@ -514,7 +514,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `eventId` | string | 实例 id |
-| `eventType` | string | `birthday` \| `social` |
+| `eventType` | string | `birthday` \| `social` \| `daily` |
 | `phase` | string | 快照内一般为 `started`；后继以广播为准：`tick` \| `ended` |
 | `templateId` | string | 模板 id |
 | `gardenId` | string? | 社交类建议必填 |

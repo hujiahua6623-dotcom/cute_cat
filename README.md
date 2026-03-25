@@ -6,14 +6,14 @@
 ## 当前状态
 
 - 产品设计文档与开源基础文档齐备；迭代路线见 `doc/开发周期计划.md`
-- **后端（至周期 2）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket、三动作、商店/库存/医院与成长窗口权威逻辑；详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
-- **前端（至周期 2）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、商店与库存面板、成长 HUD、医院治疗与三动作；本地开发通过 Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
+- **后端（至周期 3）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket、三动作、商店/库存/医院与成长窗口权威逻辑；并已落地事件系统骨架（`activeEvents` SSOT、`eventBroadcast` 增量、生日/社交规则与最小持久化）。详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
+- **前端（至周期 3）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、商店与库存面板、成长 HUD、医院治疗与三动作；并已接入事件 UI 最小闭环（生日弹窗 + 花园事件进度 HUD，基于 `activeEvents/eventBroadcast`）。本地开发通过 Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
 
 ## Current Phase Card（唯一阶段口径）
 
-- Current phase: **周期 3 进行中（事件系统：生日 + 花园社交）**
-- Done: 周期 0、周期 1、周期 1A（视觉整合冲刺）、**周期 2（经济/生病/成长，已正式收口）**
-- In progress focus: 周期 3——`EventTemplate` 与调度、`eventBroadcast` 启用、生日弹窗与社交事件最小可见进度（详见 `doc/开发周期计划.md` §周期 3）
+- Current phase: **周期 4 进行中（LangChain 受控 AI）**
+- Done: 周期 0、周期 1、周期 1A（视觉整合冲刺）、周期 2（经济/生病/成长，已正式收口）、**周期 3（事件系统：生日 + 花园社交，已验收）**
+- In progress focus: 周期 4——在不改经济/概率核心参数前提下接入 `backend/ai/` 受控生成（`memory.summary`、`milestones`、活动文案、`narrativeSuggestions`），并确保失败兜底不影响可玩性（详见 `doc/开发周期计划.md` §周期 4）
 - Evidence source: `doc/开发进度日志.md` 最新日期小节
 - Gate source: `doc/开发周期计划.md`（周期门禁与触发条件）
 

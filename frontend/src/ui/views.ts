@@ -114,6 +114,7 @@ export interface GardenViewRefs {
   valueMood: HTMLElement;
   gardenMeta: HTMLElement;
   growthLine: HTMLElement;
+  eventList: HTMLElement;
   actionButtons: HTMLButtonElement[];
   feedSelect: HTMLSelectElement;
   inventoryList: HTMLElement;
@@ -137,6 +138,12 @@ export function createGardenView(): GardenViewRefs {
           <div class="stat-row"><label>情绪</label><div class="stat-bar mood"><span id="bar-mood" style="width:0%"></span></div><span class="stat-value" id="value-mood">--</span></div>
         </div>
         <div class="meta-line" id="growth-line"></div>
+
+        <div class="event-section">
+          <div class="section-subtitle">活动</div>
+          <div class="event-list" id="event-list">暂无活动</div>
+        </div>
+
         <div class="action-bar">
           <button type="button" class="btn" data-action="Feed">喂食</button>
           <button type="button" class="btn" data-action="Cuddle">抱抱</button>
@@ -178,6 +185,7 @@ export function createGardenView(): GardenViewRefs {
     valueMood: root.querySelector("#value-mood") as HTMLElement,
     gardenMeta: root.querySelector("#garden-meta") as HTMLElement,
     growthLine: root.querySelector("#growth-line") as HTMLElement,
+    eventList: root.querySelector("#event-list") as HTMLElement,
     actionButtons: [...root.querySelectorAll<HTMLButtonElement>("[data-action]")],
     feedSelect: root.querySelector("#feed-item-select") as HTMLSelectElement,
     inventoryList: root.querySelector("#inventory-list") as HTMLElement,

@@ -5,7 +5,7 @@ This file is the quick-start context for new agent sessions.
 ## Project Snapshot
 
 - Project: `cute_cat` / 小屋里的电子宠物
-- Stage: implementation-in-progress（周期 0～2 已完成；**周期 3 事件系统**进行中）
+- Stage: implementation-in-progress（周期 0～3 已完成；**周期 4 LangChain 受控 AI**进行中）
 - Architecture: frontend/backend separated
 - Core loop: care pet -> state changes -> growth progression -> events -> rewards
 

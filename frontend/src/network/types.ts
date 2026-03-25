@@ -127,12 +127,48 @@ export interface GardenSnapshotPayload {
   gameTime: GameTimePayload;
   pets: GardenPetWire[];
   users: GardenUserWire[];
+  /** Cycle 3: event system SSOT; initialize UI from this array. */
+  activeEvents: GardenEventWire[];
 }
 
 export type WsClientMessage =
   | { type: "joinGarden"; requestId: string; payload: { gardenId: string; clientViewport?: { width: number; height: number } } }
   | { type: "updatePointer"; requestId: string; payload: { gardenId: string; x: number; y: number } }
   | { type: "petAction"; requestId: string; payload: { gardenId: string; actionType: string; petId: string; itemId?: string } };
+
+export interface GardenEventTaskWire {
+  taskId: string;
+  label: string;
+  current: number;
+  target: number;
+  scope: "pet" | "garden" | string;
+}
+
+export interface GardenEventRewardsGrantedWire {
+  coins?: number;
+}
+
+export interface GardenEventEndsAtGameTimeWire {
+  gameDayIndex: number;
+  gameHourFloat: number;
+}
+
+export interface GardenEventWire {
+  eventId: string;
+  eventType: string; // "birthday" | "social" (doc)
+  phase: string; // "started" | "tick" | "ended"
+  templateId: string;
+  gardenId: string;
+
+  petId?: string;
+  ownerUserId?: string;
+  title?: string;
+  message?: string;
+
+  tasks?: GardenEventTaskWire[];
+  endsAtGameTime?: GardenEventEndsAtGameTimeWire;
+  rewardsGranted?: GardenEventRewardsGrantedWire;
+}
 
 export type WsServerMessage =
   | { type: "gardenSnapshot"; requestId?: string; payload: GardenSnapshotPayload }
@@ -149,6 +185,7 @@ export type WsServerMessage =
       };
     }
   | { type: "petStateDelta"; payload: { petId: string; version: number; delta: Partial<PetStats>; stats: PetStats } }
+  | { type: "eventBroadcast"; payload: GardenEventWire }
   | { type: "userLeft"; payload: { gardenId: string; userId: string } }
   | { type: "error"; requestId?: string; payload: { code: string; message: string } }
   | { type: string; requestId?: string; payload?: unknown };

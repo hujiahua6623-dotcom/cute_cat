@@ -157,7 +157,7 @@ async function enterGarden(): Promise<void> {
     return;
   }
 
-  store.setUser({ userId: me.userId, nickname: me.nickname });
+  store.setUser({ userId: me.userId, nickname: me.nickname, coins: me.coins });
   store.setPetContext(me.petId, me.gardenId);
 
   const pet = await api.getPet(me.petId);
@@ -249,6 +249,7 @@ async function enterGarden(): Promise<void> {
       try {
         const res = await api.shopBuy(it.itemId, 1);
         inventory.set(res.itemId, res.inventoryCount);
+        store.setCoins(res.coinsAfter);
         renderInventoryUi();
         showActionToast(`购买成功：${it.label}（库存 ${res.inventoryCount}）`);
         void syncInventoryFromServer();
@@ -270,7 +271,12 @@ async function enterGarden(): Promise<void> {
   }, 5000);
 
   const syncHud = (): void => {
-    renderGardenHud(store.getState(), view);
+    const state = store.getState();
+    try {
+      renderGardenHud(state, view);
+    } catch (error) {
+      throw error;
+    }
   };
   const unsub = store.subscribe(syncHud);
   syncHud();
@@ -366,6 +372,7 @@ async function enterGarden(): Promise<void> {
     try {
       const res = await api.hospitalTreat(me.petId);
       store.overwriteStats(res.stats);
+      store.setCoins(res.coinsAfter);
       showActionToast(`治疗成功：花费 ${res.treatCost}，剩余金币 ${res.coinsAfter}`);
     } catch (err) {
       const msg = err instanceof ApiRequestError ? `${err.code}: ${err.message}` : String(err);
@@ -431,7 +438,7 @@ async function enterGarden(): Promise<void> {
 
 async function routeAfterAuth(): Promise<void> {
   const me = await api.getMe();
-  store.setUser({ userId: me.userId, nickname: me.nickname });
+  store.setUser({ userId: me.userId, nickname: me.nickname, coins: me.coins });
   store.setPetContext(me.petId, me.gardenId);
   if (!me.petId) {
     renderClaim();

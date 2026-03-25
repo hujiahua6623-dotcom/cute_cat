@@ -6,8 +6,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from cute_cat.events.constants import TEMPLATE_BIRTHDAY_V1, TEMPLATE_SOCIAL_V1
-from cute_cat.events.templates import birthday_tasks_wire, social_tasks_wire
+from cute_cat.events.constants import TEMPLATE_BIRTHDAY_V1, TEMPLATE_DAILY_V1, TEMPLATE_SOCIAL_V1
+from cute_cat.events.templates import birthday_tasks_wire, daily_tasks_wire, social_tasks_wire
 from cute_cat.events.progress_repo import load_by_garden
 from cute_cat.events.rules import is_birthday_anniversary_day, social_window_bounds
 from cute_cat.game.time import GameTime
@@ -40,6 +40,10 @@ def _ends_social(window_start: int) -> dict[str, float | int]:
 
 
 def _ends_birthday(day: int) -> dict[str, float | int]:
+    return {"gameDayIndex": day, "gameHourFloat": 24.0}
+
+
+def _ends_daily(day: int) -> dict[str, float | int]:
     return {"gameDayIndex": day, "gameHourFloat": 24.0}
 
 
@@ -79,6 +83,27 @@ async def build_active_events(
             )
 
     for pet in pets:
+        daily_anchor = f"daily:{pet.id}:{day}"
+        daily_prog = by_anchor.get(daily_anchor)
+        if not (daily_prog and daily_prog.completed):
+            daily_tasks = _merge_tasks(list(daily_tasks_wire()), daily_prog, ("pat_count",))
+            daily_event_id = f"evt_daily_{pet.id}_{day}"
+            out.append(
+                {
+                    "eventId": daily_event_id,
+                    "eventType": "daily",
+                    "phase": "started",
+                    "templateId": TEMPLATE_DAILY_V1,
+                    "gardenId": garden_id,
+                    "petId": pet.id,
+                    "ownerUserId": pet.owner_user_id,
+                    "title": "每日互动任务",
+                    "message": "今日摸头达标可领取金币奖励",
+                    "tasks": daily_tasks,
+                    "endsAtGameTime": _ends_daily(day),
+                }
+            )
+
         if not is_birthday_anniversary_day(day, pet.birthday_game_day):
             continue
         anchor = f"birthday:{pet.id}:{day}"

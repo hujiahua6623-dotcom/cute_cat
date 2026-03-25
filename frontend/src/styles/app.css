@@ -310,6 +310,28 @@ body {
   color: var(--color-text-muted);
 }
 
+.event-section {
+  margin-top: 10px;
+}
+
+.event-list .event-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.event-task-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.event-progress-text,
+.event-reward {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
 .inventory-list {
   border: 2px solid var(--color-border);
   border-radius: 6px;
@@ -354,6 +376,16 @@ body {
   justify-content: center;
   z-index: 50;
   padding: 16px;
+}
+
+.birthday-backdrop {
+  /* Click-through: birthday modal must not block UI interactions. */
+  pointer-events: none;
+}
+
+.birthday-panel {
+  /* Keep modal as pure visual layer for MVP. */
+  pointer-events: none;
 }
 
 .modal {
