@@ -6,14 +6,14 @@
 ## 当前状态
 
 - 产品设计文档与开源基础文档齐备；迭代路线见 `doc/开发周期计划.md`
-- **后端（周期 0 + 周期 1 切片）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket 与 `Feed`/`Cuddle`/`Pat`；详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
-- **前端（周期 0 + 周期 1）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、节流指针与三动作；本地开发通过 Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
+- **后端（至周期 2）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket、三动作、商店/库存/医院与成长窗口权威逻辑；详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
+- **前端（至周期 2）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、商店与库存面板、成长 HUD、医院治疗与三动作；本地开发通过 Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
 
 ## Current Phase Card（唯一阶段口径）
 
-- Current phase: **周期 2 进行中（后端核心闭环已落地）**
-- Done: 周期 0、周期 1、周期 1A（视觉整合冲刺）
-- In progress focus: 周期 2 联调与回归补证据（前端面板一致性 + 无回退）
+- Current phase: **周期 3 进行中（事件系统：生日 + 花园社交）**
+- Done: 周期 0、周期 1、周期 1A（视觉整合冲刺）、**周期 2（经济/生病/成长，已正式收口）**
+- In progress focus: 周期 3——`EventTemplate` 与调度、`eventBroadcast` 启用、生日弹窗与社交事件最小可见进度（详见 `doc/开发周期计划.md` §周期 3）
 - Evidence source: `doc/开发进度日志.md` 最新日期小节
 - Gate source: `doc/开发周期计划.md`（周期门禁与触发条件）
 
@@ -70,6 +70,7 @@ npm run dev
 - 开发收尾规范：`doc/开发收尾规范.md`
 - 开发进度日志：`doc/开发进度日志.md`
 - 分周期开发计划：`doc/开发周期计划.md`
+- 周期 3 任务与已定稿口径：`doc/周期3-任务拆分.md`
 
 ## 流程防复发机制
 
@@ -94,7 +95,8 @@ npm run dev
 
 1. 周期 0：工程骨架
 2. 周期 1：切片 0 + 2（时间、离线摘要、WebSocket、核心动作）
-3. 周期 2～5：经济/成长、事件、LangChain、打磨部署
+3. 周期 2：经济/生病/成长（已收口）
+4. 周期 3～5：事件、LangChain、打磨部署
 
 ## 贡献与社区
 

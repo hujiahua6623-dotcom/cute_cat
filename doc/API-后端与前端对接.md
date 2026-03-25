@@ -509,6 +509,22 @@
 
 进入后全量状态。
 
+**`activeEvents`（周期 3，SSOT）**：本字段为当前花园内**进行中 / 对本客户端可见**事件的权威列表；客户端进房时**必须**据此初始化事件 UI。进度与阶段的后续变化由 `eventBroadcast` 增量下拨（按 `eventId` 合并）。无事件时为 `[]`。单条元素结构见下表（与 §11.5 _broadcast payload 核心字段对齐）。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `eventId` | string | 实例 id |
+| `eventType` | string | `birthday` \| `social` |
+| `phase` | string | 快照内一般为 `started`；后继以广播为准：`tick` \| `ended` |
+| `templateId` | string | 模板 id |
+| `gardenId` | string? | 社交类建议必填 |
+| `petId` | string? | 生日绑定宠物时填 |
+| `ownerUserId` | string? | 生日归属用户（前端用于只给主人弹窗） |
+| `title` | string? | 标题（占位文案可） |
+| `message` | string? | 短描述 |
+| `tasks` | array | `{ taskId, label, current, target, scope }`，`scope` 为 `pet` \| `garden` |
+| `endsAtGameTime` | object? | `{ gameDayIndex, gameHourFloat }`，可选 |
+
 ```json
 {
   "type": "gardenSnapshot",
@@ -534,6 +550,27 @@
         "userId": "usr_01jqexample",
         "nickname": "花园玩家",
         "pointer": { "x": 0.4, "y": 0.6 }
+      }
+    ],
+    "activeEvents": [
+      {
+        "eventId": "evt_01jqexample",
+        "eventType": "social",
+        "phase": "started",
+        "templateId": "garden_social_v1",
+        "gardenId": "gdn_01jqexample",
+        "title": "花园小聚",
+        "message": "和大家一起完成投喂目标吧（占位）",
+        "tasks": [
+          {
+            "taskId": "feed_total",
+            "label": "花园累计喂食",
+            "current": 1,
+            "target": 10,
+            "scope": "garden"
+          }
+        ],
+        "endsAtGameTime": { "gameDayIndex": 16, "gameHourFloat": 0 }
       }
     ]
   }
@@ -598,16 +635,32 @@
 }
 ```
 
-### 11.5 `eventBroadcast`（占位，周期 3）
+### 11.5 `eventBroadcast`（周期 3，增量）
+
+与 `activeEvents` 单条结构一致字段应尽量复用；广播可仅携带**变化部分**（客户端按 `eventId` 合并）。`phase` 建议取值：`started` | `tick` | `ended`。
 
 ```json
 {
   "type": "eventBroadcast",
   "payload": {
-    "eventId": "evt_placeholder",
-    "phase": "started",
+    "eventId": "evt_01jqexample",
+    "eventType": "birthday",
+    "phase": "tick",
     "templateId": "birthday_v1",
-    "message": "占位：生日活动开始"
+    "gardenId": "gdn_01jqexample",
+    "petId": "pet_01jqexample",
+    "ownerUserId": "usr_01jqexample",
+    "title": "生日快乐",
+    "message": "今天好好陪它一下（占位）",
+    "tasks": [
+      {
+        "taskId": "cuddle_count",
+        "label": "今日抱抱 3 次",
+        "current": 1,
+        "target": 3,
+        "scope": "pet"
+      }
+    ]
   }
 }
 ```
@@ -646,6 +699,7 @@
 | 2026-03-21 | 补充：`/health` 双路径、`Feed` 可选 `itemId`、`petStateDelta` 同时含 `delta`+`stats`、UTC 与 `PUBLIC_BASE_URL` |
 | 2026-03-24 | 周期 2 核心闭环：新增 `/shop/buy`、`/hospital/treat`；`Feed` 切换为库存驱动并要求有效 `itemId` |
 | 2026-03-24 | 补充库存读取接口：新增 `GET /shop/inventory`，用于前端库存面板服务端真值初始化 |
+| 2026-03-25 | 周期 3：`gardenSnapshot.payload.activeEvents`（SSOT）与 `eventBroadcast` 字段表；示例与 `doc/周期3-任务拆分.md` 一致 |
 
 ---
 

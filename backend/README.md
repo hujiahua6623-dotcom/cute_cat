@@ -28,8 +28,8 @@ export PYTHONPATH=src
 alembic -c alembic.ini upgrade head
 ```
 
-If you pulled cycle-2 changes, run migrations before starting the server so new columns/tables
-(`diet_history`, `inventories`, etc.) are present in MySQL.
+If you pulled cycle-2+ changes, run migrations before starting the server so new columns/tables
+(`diet_history`, `inventories`, `garden_event_progress`, etc.) are present in MySQL.
 
 ## Run (development)
 
@@ -62,3 +62,9 @@ python3 -m pytest tests/ -v
 - `POST /api/v1/shop/buy`: buy food item with coins and add inventory.
 - `POST /api/v1/hospital/treat`: spend coins to reduce `sickLevel`.
 - `petAction` with `Feed` now requires a valid food `itemId` in inventory.
+
+## Cycle 3 (events)
+
+- Module: `src/cute_cat/events/` — birthday anniversary + garden social windows (`doc/周期3-任务拆分.md`).
+- WebSocket `joinGarden` → `gardenSnapshot.payload.activeEvents` (SSOT); `petAction` may emit `eventBroadcast` (`tick` / `ended` with optional `rewardsGranted`).
+- Table `garden_event_progress` (Alembic `003_garden_event_progress`).

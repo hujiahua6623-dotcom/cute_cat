@@ -72,6 +72,21 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class GardenEventProgress(Base):
+    """Per-garden event instance progress (cycle 3)."""
+
+    __tablename__ = "garden_event_progress"
+    __table_args__ = (UniqueConstraint("garden_id", "anchor_key", name="uq_garden_event_progress_garden_anchor"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    garden_id: Mapped[str] = mapped_column(String(36), ForeignKey("gardens.id"), index=True)
+    anchor_key: Mapped[str] = mapped_column(String(160))
+    event_kind: Mapped[str] = mapped_column(String(32))
+    pet_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("pets.id"), nullable=True)
+    progress: Mapped[dict] = mapped_column(JSON, default=dict)
+    completed: Mapped[bool] = mapped_column(default=False, server_default="0")
+
+
 class Inventory(Base):
     __tablename__ = "inventories"
     __table_args__ = (UniqueConstraint("user_id", "item_id", name="uq_inventories_user_item"),)

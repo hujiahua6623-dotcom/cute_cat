@@ -17,6 +17,8 @@ from cute_cat.game.cycle2 import append_diet_history, has_diet_shift_risk
 from cute_cat.game.economy import get_shop_item
 from cute_cat.config import get_settings
 from cute_cat.game.actions import apply_action
+from cute_cat.events.evaluate import build_active_events
+from cute_cat.events.hooks import apply_event_hooks_after_action
 from cute_cat.game.time import get_game_time, parse_anchor
 from cute_cat.persistence.database import session_factory
 from cute_cat.persistence.models import Pet, User
@@ -151,6 +153,9 @@ async def _handle_message(
         hub.attach(gid, conn)
         now = datetime.now(UTC)
         game_time = snapshot_game_time(settings, now)
+        anchor = parse_anchor(settings.server_start_wall_clock)
+        gt = get_game_time(now, anchor_wall_clock=anchor)
+        active_events = await build_active_events(session, garden_id=gid, pets=pets, gt=gt)
         await _send_json(
             websocket,
             {
@@ -163,6 +168,7 @@ async def _handle_message(
                     "gameTime": game_time,
                     "pets": pets_payload,
                     "users": users_payload,
+                    "activeEvents": active_events,
                 },
             },
         )
@@ -240,7 +246,8 @@ async def _handle_message(
 
         reconcile_pet_now(pet, settings, apply_passive_decay=False)
         anchor = parse_anchor(settings.server_start_wall_clock)
-        gt = get_game_time(datetime.now(UTC), anchor_wall_clock=anchor)
+        now_wall = datetime.now(UTC)
+        gt = get_game_time(now_wall, anchor_wall_clock=anchor)
         try:
             food_item = None
             if action_type == "Feed":
@@ -288,6 +295,14 @@ async def _handle_message(
 
         pet.state_version = pet.state_version + 1
         await session.flush()
+        event_payloads = await apply_event_hooks_after_action(
+            session,
+            garden_id=gid,
+            pet=pet,
+            actor_user_id=user_id,
+            action_type=action_type,
+            gt=gt,
+        )
         await session.commit()
 
         for target in hub.all_in_garden(gid):
@@ -320,6 +335,11 @@ async def _handle_message(
                     },
                 },
             )
+            for ev in event_payloads:
+                await _send_json(
+                    target.websocket,
+                    {"type": "eventBroadcast", "payload": ev},
+                )
         return
 
     await _send_json(

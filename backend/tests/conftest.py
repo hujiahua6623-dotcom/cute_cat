@@ -1,17 +1,58 @@
-"""Pytest setup: env must be set before importing the app."""
+"""Shared fixtures; clear in-memory garden hub between tests (prevents stale WS targets)."""
 
 from __future__ import annotations
 
-import os
+import asyncio
 
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
-os.environ.setdefault("JWT_SECRET", "test-secret-test-secret-test-secret")
-os.environ.setdefault("CORS_ORIGINS", "http://localhost:5173")
+from fastapi.testclient import TestClient
+import pytest
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
+
+from cute_cat.main import app
+from cute_cat.persistence.database import get_session, set_session_factory_override
+from cute_cat.persistence.models import Base
 
 
-def pytest_configure() -> None:
-    from cute_cat.config import get_settings
-    from cute_cat.persistence.database import reset_engine
+@pytest.fixture(autouse=True)
+def _reset_garden_hub() -> None:
+    yield
+    from cute_cat.realtime.garden_hub import hub
 
-    get_settings.cache_clear()
-    reset_engine()
+    hub.by_garden.clear()
+    hub.by_user.clear()
+
+
+@pytest.fixture
+def client_with_db() -> TestClient:
+    async def _setup():
+        engine = create_async_engine(
+            "sqlite+aiosqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        return engine
+
+    engine = asyncio.run(_setup())
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    async def override_session():
+        async with factory() as session:
+            yield session
+
+    app.dependency_overrides[get_session] = override_session
+    set_session_factory_override(factory)
+
+    async def _dispose():
+        await engine.dispose()
+
+    try:
+        client = TestClient(app)
+        setattr(client, "_session_factory", factory)
+        yield client
+    finally:
+        app.dependency_overrides.clear()
+        set_session_factory_override(None)
+        asyncio.run(_dispose())
