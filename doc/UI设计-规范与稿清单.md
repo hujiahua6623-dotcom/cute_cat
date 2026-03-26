@@ -76,6 +76,7 @@
 | `ui_ws_disconnected.png` | 断开 + 重试 | 建议 |
 | `ui_ws_reconnecting.png` | 重连中 | 可选 |
 | `ui_garden_main.png` | 花园主界面、HUD、动作条、他人指针 | **高** |
+| `ui_garden_main_multi_pet.png` | 花园主界面（**多人同屏**）：像素风暖色花园，与 `ui_garden_main` 同系列；同屏至少 3 宠、自己金色星标「你」/他人蓝色圆标+昵称、HUD/动作条/活动区/他人地面指针；设计参考稿（非实机截图） | **建议** |
 | `ui_offline_summary.png` | 离线摘要弹窗 | **高** |
 | `ui_action_result_toast.png` | 动作反馈条 | 建议 |
 | `ui_pet_status_growth.png` | 成长与稳定度面板 | 可简化 |
@@ -86,6 +87,8 @@
 以下 **16** 个文件应同时存在于 `assets/ui/`（命名完全一致、扩展名小写 `.png`）：
 
 `ui_design_system_components.png`、`ui_auth_login.png`、`ui_auth_register.png`、`ui_auth_login_register.png`、`ui_auth_error_states.png`、`ui_pet_claim.png`、`ui_pet_claim_conflict.png`、`ui_ws_connecting.png`、`ui_ws_disconnected.png`、`ui_ws_reconnecting.png`、`ui_garden_main.png`、`ui_offline_summary.png`、`ui_action_result_toast.png`、`ui_pet_status_growth.png`、`ui_shop_hospital.png`、`ui_birthday_event.png`。
+
+**补充稿（不纳入上表 16 文件门禁，但建议纳入走查）**：`ui_garden_main_multi_pet.png`（多人同屏多宠物场景参考；仓库内为与 `ui_garden_main` 对齐的像素风主参考稿。`scripts/generate_ui_garden_main_multi_pet.py` 仅作可选 PIL 占位导出，不覆盖上述主稿）。
 
 ---
 
@@ -125,3 +128,5 @@
 |------|------|
 | 2026-03-21 | 初版：§10.2 补齐稿与 token；稿清单与 API 对照 |
 | 2026-03-22 | §1：Figma 占位说明与仓库对齐责任；§3.1：16 文件完整列表（与 §10.3 一致）；补全仓库中花园/离线等主界面参考图 |
+| 2026-03-26 | 新增补充稿 `ui_garden_main_multi_pet.png`（多人同屏多宠物花园主界面参考）；§3 表增一行说明 |
+| 2026-03-27 | 替换 `ui_garden_main_multi_pet.png` 为与 `ui_garden_main` 同风格像素风参考稿；§3 表与补充稿说明同步（主稿为仓库 PNG，脚本为可选占位） |

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `assets/ui/ui_garden_main_multi_pet.png`：替换为与 `ui_garden_main` 同系列像素风多人同屏参考稿；说明见 `doc/UI设计-规范与稿清单.md` 修订记录（2026-03-27）。
+
 ### Added
 
 - 分周期开发计划：`doc/开发周期计划.md`（含团队角色：UI 设计、前端、后端、测试、运维）

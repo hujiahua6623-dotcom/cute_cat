@@ -13,6 +13,16 @@ interface WsHandlerDeps {
   store: GameStore;
   getScene: () => {
     setPetNormPosition: (x: number, y: number) => void;
+    setGardenPets: (
+      pets: Array<{
+        petId: string;
+        ownerUserId: string;
+        petName?: string;
+        ownerNickname?: string;
+        position: { x: number; y: number };
+      }>,
+      localUserId: string
+    ) => void;
     clearRemotePointers: () => void;
     setRemotePointerNorm: (userId: string, x: number, y: number) => void;
     removeRemotePointer: (userId: string) => void;
@@ -29,10 +39,17 @@ export function createWsMessageHandler(deps: WsHandlerDeps): (msg: WsServerMessa
 
     if (msg.type === "gardenSnapshot" && msg.payload) {
       const pl = msg.payload as GardenSnapshotPayload;
-      const mine = pl.pets.find((p) => p.petId === me.petId);
-      if (mine) {
-        getScene()?.setPetNormPosition(mine.position.x, mine.position.y);
-      }
+      const nicknameByUserId = new Map(pl.users.map((u) => [u.userId, u.nickname]));
+      getScene()?.setGardenPets(
+        pl.pets.map((p) => ({
+          petId: p.petId,
+          ownerUserId: p.ownerUserId,
+          petName: p.petName,
+          ownerNickname: nicknameByUserId.get(p.ownerUserId),
+          position: p.position,
+        })),
+        me.userId
+      );
       getScene()?.clearRemotePointers();
       for (const u of pl.users) {
         if (u.userId === me.userId) continue;

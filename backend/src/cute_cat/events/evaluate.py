@@ -6,6 +6,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cute_cat.ai.service import generate_event_text
+from cute_cat.config import Settings
 from cute_cat.events.constants import TEMPLATE_BIRTHDAY_V1, TEMPLATE_DAILY_V1, TEMPLATE_SOCIAL_V1
 from cute_cat.events.templates import birthday_tasks_wire, daily_tasks_wire, social_tasks_wire
 from cute_cat.events.progress_repo import load_by_garden
@@ -49,6 +51,7 @@ def _ends_daily(day: int) -> dict[str, float | int]:
 
 async def build_active_events(
     session: AsyncSession,
+    settings: Settings,
     *,
     garden_id: str,
     pets: list[Pet],
@@ -68,6 +71,16 @@ async def build_active_events(
             base = social_tasks_wire()
             tasks = _merge_tasks(list(base), prog, ("feed_total",))
             event_id = f"evt_social_{garden_id}_{window_start}"
+            social_current = int(tasks[0]["current"]) if tasks else 0
+            social_target = int(tasks[0]["target"]) if tasks else 0
+            copy_started = await generate_event_text(
+                settings=settings,
+                event_type="social",
+                phase="started",
+                pet_name="花园宠物",
+                progress_current=social_current,
+                progress_target=social_target,
+            )
             out.append(
                 {
                     "eventId": event_id,
@@ -75,8 +88,9 @@ async def build_active_events(
                     "phase": "started",
                     "templateId": TEMPLATE_SOCIAL_V1,
                     "gardenId": garden_id,
-                    "title": "花园小聚",
-                    "message": "和大家一起完成投喂目标吧（占位）",
+                    "title": copy_started["title"],
+                    "message": copy_started["message"],
+                    "narrativeSuggestions": copy_started["narrativeSuggestions"],
                     "tasks": tasks,
                     "endsAtGameTime": _ends_social(window_start),
                 }
@@ -88,6 +102,16 @@ async def build_active_events(
         if not (daily_prog and daily_prog.completed):
             daily_tasks = _merge_tasks(list(daily_tasks_wire()), daily_prog, ("pat_count",))
             daily_event_id = f"evt_daily_{pet.id}_{day}"
+            daily_current = int(daily_tasks[0]["current"]) if daily_tasks else 0
+            daily_target = int(daily_tasks[0]["target"]) if daily_tasks else 0
+            daily_copy = await generate_event_text(
+                settings=settings,
+                event_type="daily",
+                phase="started",
+                pet_name=pet.pet_name,
+                progress_current=daily_current,
+                progress_target=daily_target,
+            )
             out.append(
                 {
                     "eventId": daily_event_id,
@@ -97,8 +121,9 @@ async def build_active_events(
                     "gardenId": garden_id,
                     "petId": pet.id,
                     "ownerUserId": pet.owner_user_id,
-                    "title": "每日互动任务",
-                    "message": "今日摸头达标可领取金币奖励",
+                    "title": daily_copy["title"],
+                    "message": daily_copy["message"],
+                    "narrativeSuggestions": daily_copy["narrativeSuggestions"],
                     "tasks": daily_tasks,
                     "endsAtGameTime": _ends_daily(day),
                 }
@@ -113,6 +138,16 @@ async def build_active_events(
         base = birthday_tasks_wire()
         tasks = _merge_tasks(list(base), prog, ("cuddle_count",))
         event_id = f"evt_birthday_{pet.id}_{day}"
+        birthday_current = int(tasks[0]["current"]) if tasks else 0
+        birthday_target = int(tasks[0]["target"]) if tasks else 0
+        birthday_copy = await generate_event_text(
+            settings=settings,
+            event_type="birthday",
+            phase="started",
+            pet_name=pet.pet_name,
+            progress_current=birthday_current,
+            progress_target=birthday_target,
+        )
         out.append(
             {
                 "eventId": event_id,
@@ -122,8 +157,9 @@ async def build_active_events(
                 "gardenId": garden_id,
                 "petId": pet.id,
                 "ownerUserId": pet.owner_user_id,
-                "title": "生日快乐",
-                "message": "今天多陪陪它吧（占位）",
+                "title": birthday_copy["title"],
+                "message": birthday_copy["message"],
+                "narrativeSuggestions": birthday_copy["narrativeSuggestions"],
                 "tasks": tasks,
                 "endsAtGameTime": _ends_birthday(day),
             }

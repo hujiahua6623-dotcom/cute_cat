@@ -89,3 +89,22 @@ def test_register_login_me_claim(client_with_db: TestClient) -> None:
     )
     assert r5.status_code == 200
     assert "reasons" in r5.json()
+
+
+def test_refresh_returns_user_id(client_with_db: TestClient) -> None:
+    c = client_with_db
+    r = c.post(
+        "/api/v1/auth/register",
+        json={"email": "refresh_user@b.com", "password": "password12", "nickname": "n"},
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    uid = body["userId"]
+    refresh = body["refreshToken"]
+
+    rr = c.post("/api/v1/auth/refresh", json={"refreshToken": refresh})
+    assert rr.status_code == 200, rr.text
+    refreshed = rr.json()
+    assert refreshed["userId"] == uid
+    assert refreshed["accessToken"]
+    assert refreshed["refreshToken"]

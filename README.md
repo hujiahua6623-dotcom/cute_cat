@@ -6,8 +6,8 @@
 ## 当前状态
 
 - 产品设计文档与开源基础文档齐备；迭代路线见 `doc/开发周期计划.md`
-- **后端（至周期 3）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket、三动作、商店/库存/医院与成长窗口权威逻辑；并已落地事件系统骨架（`activeEvents` SSOT、`eventBroadcast` 增量、生日/社交规则与最小持久化）。详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
-- **前端（至周期 3）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、商店与库存面板、成长 HUD、医院治疗与三动作；并已接入事件 UI 最小闭环（生日弹窗 + 花园事件进度 HUD，基于 `activeEvents/eventBroadcast`）。本地开发通过 Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
+- **后端（周期 4 进行中）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket、三动作、商店/库存/医院、成长窗口与事件系统（`activeEvents` SSOT、`eventBroadcast` 增量）；并新增 `backend/src/cute_cat/ai/` 受控文案与记忆摘要服务（含超时/失败 fallback），接入生日/每日/社交事件与治疗完成触发点。详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
+- **前端（周期 4 进行中）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、商店库存、成长 HUD、医院治疗与三动作；事件 UI 现支持展示受控建议文案（`narrativeSuggestions`）并保留字段缺失降级。Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
 
 ## Current Phase Card（唯一阶段口径）
 
@@ -83,6 +83,7 @@ npm run dev
 位于 `assets/ui/`：
 
 - `ui_garden_main.png`
+- `ui_garden_main_multi_pet.png`（多人同屏补充参考，与 `ui_garden_main` 配套）
 - `ui_pet_status_growth.png`
 - `ui_shop_hospital.png`
 - `ui_birthday_event.png`

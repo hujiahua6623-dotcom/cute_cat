@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
+from cute_cat.ai.service import append_milestone, generate_event_text, refresh_pet_memory_summary
+from cute_cat.config import Settings
 from cute_cat.events.constants import (
     BIRTHDAY_CUDDLE_TARGET,
     BIRTHDAY_REWARD_COINS,
@@ -43,6 +44,7 @@ def _wire_tasks_from_progress(kind: str, prog_dict: dict[str, Any]) -> list[dict
 
 async def apply_event_hooks_after_action(
     session: AsyncSession,
+    settings: Settings,
     *,
     garden_id: str,
     pet: Pet,
@@ -69,6 +71,14 @@ async def apply_event_hooks_after_action(
         row.progress = p
         flag_modified(row, "progress")
         event_id = f"evt_social_{garden_id}_{window_start}"
+        copy_tick = await generate_event_text(
+            settings=settings,
+            event_type="social",
+            phase="tick",
+            pet_name=pet.pet_name,
+            progress_current=int(p.get("feed_total", 0)),
+            progress_target=SOCIAL_FEED_TARGET,
+        )
         out.append(
             {
                 "eventId": event_id,
@@ -76,8 +86,9 @@ async def apply_event_hooks_after_action(
                 "phase": "tick",
                 "templateId": TEMPLATE_SOCIAL_V1,
                 "gardenId": garden_id,
-                "title": "花园小聚",
-                "message": "投喂进度已更新（占位）",
+                "title": copy_tick["title"],
+                "message": copy_tick["message"],
+                "narrativeSuggestions": copy_tick["narrativeSuggestions"],
                 "tasks": _wire_tasks_from_progress("social", p),
             }
         )
@@ -86,6 +97,16 @@ async def apply_event_hooks_after_action(
             u = await session.get(User, actor_user_id)
             if u is not None:
                 u.coins = int(u.coins) + SOCIAL_REWARD_COINS
+            copy_end = await generate_event_text(
+                settings=settings,
+                event_type="social",
+                phase="ended",
+                pet_name=pet.pet_name,
+                progress_current=int(p.get("feed_total", 0)),
+                progress_target=SOCIAL_FEED_TARGET,
+            )
+            append_milestone(pet, title="完成一次花园社交活动", source="event_social")
+            await refresh_pet_memory_summary(settings, pet=pet)
             out.append(
                 {
                     "eventId": event_id,
@@ -93,6 +114,9 @@ async def apply_event_hooks_after_action(
                     "phase": "ended",
                     "templateId": TEMPLATE_SOCIAL_V1,
                     "gardenId": garden_id,
+                    "title": copy_end["title"],
+                    "message": copy_end["message"],
+                    "narrativeSuggestions": copy_end["narrativeSuggestions"],
                     "rewardsGranted": {"coins": SOCIAL_REWARD_COINS},
                 }
             )
@@ -109,6 +133,14 @@ async def apply_event_hooks_after_action(
         row.progress = p
         flag_modified(row, "progress")
         event_id = f"evt_birthday_{pet.id}_{day}"
+        copy_tick = await generate_event_text(
+            settings=settings,
+            event_type="birthday",
+            phase="tick",
+            pet_name=pet.pet_name,
+            progress_current=int(p.get("cuddle_count", 0)),
+            progress_target=BIRTHDAY_CUDDLE_TARGET,
+        )
         out.append(
             {
                 "eventId": event_id,
@@ -118,8 +150,9 @@ async def apply_event_hooks_after_action(
                 "gardenId": garden_id,
                 "petId": pet.id,
                 "ownerUserId": pet.owner_user_id,
-                "title": "生日快乐",
-                "message": "抱抱进度已更新（占位）",
+                "title": copy_tick["title"],
+                "message": copy_tick["message"],
+                "narrativeSuggestions": copy_tick["narrativeSuggestions"],
                 "tasks": _wire_tasks_from_progress("birthday", p),
             }
         )
@@ -128,6 +161,16 @@ async def apply_event_hooks_after_action(
             u = await session.get(User, pet.owner_user_id)
             if u is not None:
                 u.coins = int(u.coins) + BIRTHDAY_REWARD_COINS
+            copy_end = await generate_event_text(
+                settings=settings,
+                event_type="birthday",
+                phase="ended",
+                pet_name=pet.pet_name,
+                progress_current=int(p.get("cuddle_count", 0)),
+                progress_target=BIRTHDAY_CUDDLE_TARGET,
+            )
+            append_milestone(pet, title="完成一次生日活动", source="event_birthday")
+            await refresh_pet_memory_summary(settings, pet=pet)
             out.append(
                 {
                     "eventId": event_id,
@@ -137,6 +180,9 @@ async def apply_event_hooks_after_action(
                     "gardenId": garden_id,
                     "petId": pet.id,
                     "ownerUserId": pet.owner_user_id,
+                    "title": copy_end["title"],
+                    "message": copy_end["message"],
+                    "narrativeSuggestions": copy_end["narrativeSuggestions"],
                     "rewardsGranted": {"coins": BIRTHDAY_REWARD_COINS},
                 }
             )
@@ -153,6 +199,14 @@ async def apply_event_hooks_after_action(
         row.progress = p
         flag_modified(row, "progress")
         event_id = f"evt_daily_{pet.id}_{day}"
+        copy_tick = await generate_event_text(
+            settings=settings,
+            event_type="daily",
+            phase="tick",
+            pet_name=pet.pet_name,
+            progress_current=int(p.get("pat_count", 0)),
+            progress_target=DAILY_PAT_TARGET,
+        )
         out.append(
             {
                 "eventId": event_id,
@@ -162,8 +216,9 @@ async def apply_event_hooks_after_action(
                 "gardenId": garden_id,
                 "petId": pet.id,
                 "ownerUserId": pet.owner_user_id,
-                "title": "每日互动任务",
-                "message": "每日摸头进度已更新",
+                "title": copy_tick["title"],
+                "message": copy_tick["message"],
+                "narrativeSuggestions": copy_tick["narrativeSuggestions"],
                 "tasks": _wire_tasks_from_progress("daily", p),
             }
         )
@@ -172,6 +227,16 @@ async def apply_event_hooks_after_action(
             u = await session.get(User, pet.owner_user_id)
             if u is not None:
                 u.coins = int(u.coins) + DAILY_REWARD_COINS
+            copy_end = await generate_event_text(
+                settings=settings,
+                event_type="daily",
+                phase="ended",
+                pet_name=pet.pet_name,
+                progress_current=int(p.get("pat_count", 0)),
+                progress_target=DAILY_PAT_TARGET,
+            )
+            append_milestone(pet, title="完成一次每日任务", source="event_daily")
+            await refresh_pet_memory_summary(settings, pet=pet)
             out.append(
                 {
                     "eventId": event_id,
@@ -181,6 +246,9 @@ async def apply_event_hooks_after_action(
                     "gardenId": garden_id,
                     "petId": pet.id,
                     "ownerUserId": pet.owner_user_id,
+                    "title": copy_end["title"],
+                    "message": copy_end["message"],
+                    "narrativeSuggestions": copy_end["narrativeSuggestions"],
                     "rewardsGranted": {"coins": DAILY_REWARD_COINS},
                 }
             )

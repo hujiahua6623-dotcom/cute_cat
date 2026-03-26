@@ -57,6 +57,9 @@ async def claim_pet(
         diet_history=[],
         last_game_day_index=gt.game_day_index,
         consecutive_stable_days=0,
+        memory_summary="",
+        memory_milestones=[],
+        memory_last_updated_at=None,
         state_version=1,
         last_seen_wall_clock=now,
     )
@@ -101,7 +104,15 @@ async def get_pet(
             "consecutiveStableDays": pet.consecutive_stable_days,
             "lastGameDayIndex": pet.last_game_day_index,
         },
-        memory={"summary": "", "milestones": [], "lastUpdatedAt": None},
+        memory={
+            "summary": pet.memory_summary or "",
+            "milestones": list(pet.memory_milestones or []),
+            "lastUpdatedAt": (
+                pet.memory_last_updated_at.isoformat().replace("+00:00", "Z")
+                if pet.memory_last_updated_at is not None
+                else None
+            ),
+        },
     )
 
 

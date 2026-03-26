@@ -65,6 +65,7 @@ This file is the quick-start context for new agent sessions.
 Use `assets/ui/` as visual references:
 
 - `ui_garden_main.png`
+- `ui_garden_main_multi_pet.png`（multi-pet garden reference）
 - `ui_pet_status_growth.png`
 - `ui_shop_hospital.png`
 - `ui_birthday_event.png`

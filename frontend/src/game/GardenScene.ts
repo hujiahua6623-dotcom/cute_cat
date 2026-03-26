@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 
 /**
- * Phaser layer: garden backdrop, pet placeholder, local cursor dot, remote user pointers.
+ * Phaser layer: garden backdrop, pets, local cursor dot, remote user pointers.
  * Coordinates are normalized 0–1 on the canvas (doc/API §8).
  */
 export class GardenScene extends Phaser.Scene {
-  private petMarker!: Phaser.GameObjects.Sprite;
+  private petMarkers = new Map<string, Phaser.GameObjects.Sprite>();
+  private petLabels = new Map<string, Phaser.GameObjects.Text>();
+  private petBadges = new Map<string, Phaser.GameObjects.Image>();
 
   private localCursor!: Phaser.GameObjects.Sprite;
 
@@ -23,7 +25,6 @@ export class GardenScene extends Phaser.Scene {
     const h = this.scale.height;
     this.ensureTextures();
     this.add.image(w / 2, h / 2, "garden-bg").setDisplaySize(w, h);
-    this.petMarker = this.add.sprite(w * 0.5, h * 0.6, "pet-cat").setScale(2).setDepth(10);
     this.localCursor = this.add.sprite(w * 0.5, h * 0.5, "cursor-self").setDepth(30);
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
@@ -113,6 +114,28 @@ export class GardenScene extends Phaser.Scene {
       g.destroy();
     }
 
+    if (!this.textures.exists("pet-badge-self")) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      g.fillStyle(0xffd76a, 1);
+      g.fillRect(4, 0, 4, 4);
+      g.fillRect(0, 4, 12, 4);
+      g.fillRect(4, 8, 4, 4);
+      g.lineStyle(2, 0x7c5a12, 1);
+      g.strokeRect(0, 4, 12, 4);
+      g.generateTexture("pet-badge-self", 12, 12);
+      g.destroy();
+    }
+
+    if (!this.textures.exists("pet-badge-other")) {
+      const g = this.make.graphics({ x: 0, y: 0 });
+      g.fillStyle(0x8fb7ff, 1);
+      g.fillRect(2, 2, 8, 8);
+      g.lineStyle(2, 0x36578f, 1);
+      g.strokeRect(2, 2, 8, 8);
+      g.generateTexture("pet-badge-other", 12, 12);
+      g.destroy();
+    }
+
     if (!this.textures.exists("cursor-self")) {
       const g = this.make.graphics({ x: 0, y: 0 });
       g.fillStyle(0x6b9ac4, 0.95);
@@ -135,9 +158,90 @@ export class GardenScene extends Phaser.Scene {
   }
 
   setPetNormPosition(x: number, y: number): void {
+    // Backward compatibility for older callers: treat as "my pet".
+    this.setGardenPets([{ petId: "me", ownerUserId: "me", position: { x, y } }], "me");
+  }
+
+  setGardenPets(
+    pets: Array<{
+      petId: string;
+      ownerUserId: string;
+      petName?: string;
+      ownerNickname?: string;
+      position: { x: number; y: number };
+    }>,
+    localUserId: string
+  ): void {
     const w = this.scale.width;
     const h = this.scale.height;
-    this.petMarker.setPosition(x * w, y * h);
+    const nextIds = new Set<string>();
+    for (const pet of pets) {
+      nextIds.add(pet.petId);
+      const px = pet.position.x * w;
+      const py = pet.position.y * h;
+      let marker = this.petMarkers.get(pet.petId);
+      if (!marker) {
+        marker = this.add.sprite(px, py, "pet-cat").setScale(2).setDepth(10);
+        if (pet.ownerUserId !== localUserId) {
+          marker.setTint(0xc9d8ff);
+        }
+        this.petMarkers.set(pet.petId, marker);
+      } else {
+        marker.setPosition(px, py);
+      }
+
+      const isMine = pet.ownerUserId === localUserId;
+      const badge = isMine ? "★" : "●";
+      const ownerText = isMine ? "你" : pet.ownerNickname ?? "其他玩家";
+      const labelText = `${badge} ${pet.petName ?? "宠物"}（${ownerText}）`;
+      let label = this.petLabels.get(pet.petId);
+      if (!label) {
+        label = this.add
+          .text(px, py - 42, labelText, {
+            fontSize: "12px",
+            color: isMine ? "#2f1c10" : "#2a3250",
+            backgroundColor: isMine ? "#fff1cf" : "#e9efff",
+            padding: { left: 6, right: 6, top: 2, bottom: 2 },
+          })
+          .setOrigin(0.5, 1)
+          .setDepth(12);
+        this.petLabels.set(pet.petId, label);
+      } else {
+        label.setText(labelText);
+        label.setColor(isMine ? "#2f1c10" : "#2a3250");
+        label.setBackgroundColor(isMine ? "#fff1cf" : "#e9efff");
+        label.setPosition(px, py - 42);
+      }
+
+      const badgeTex = isMine ? "pet-badge-self" : "pet-badge-other";
+      const labelLeft = label.x - label.width * 0.5;
+      const badgeX = labelLeft - 10;
+      const badgeY = label.y - label.height * 0.5 + 1;
+      let badgeSprite = this.petBadges.get(pet.petId);
+      if (!badgeSprite) {
+        badgeSprite = this.add.image(badgeX, badgeY, badgeTex).setDepth(13);
+        this.petBadges.set(pet.petId, badgeSprite);
+      } else {
+        badgeSprite.setTexture(badgeTex);
+        badgeSprite.setPosition(badgeX, badgeY);
+      }
+    }
+    for (const [petId, marker] of this.petMarkers.entries()) {
+      if (!nextIds.has(petId)) {
+        marker.destroy();
+        this.petMarkers.delete(petId);
+        const label = this.petLabels.get(petId);
+        if (label) {
+          label.destroy();
+          this.petLabels.delete(petId);
+        }
+        const badge = this.petBadges.get(petId);
+        if (badge) {
+          badge.destroy();
+          this.petBadges.delete(petId);
+        }
+      }
+    }
   }
 
   /** Update or create a remote user's pointer (others only on wire). */

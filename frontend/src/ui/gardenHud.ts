@@ -68,6 +68,11 @@ export function renderGardenHud(state: GameStoreState, view: GardenViewRefs): vo
     </div>
     <div class="event-progress-text">${task.current}/${task.target}</div>
     ${
+      event.narrativeSuggestions?.[0]
+        ? `<div class="event-task-label">建议：${event.narrativeSuggestions[0]}</div>`
+        : ""
+    }
+    ${
       event.phase === "ended" && typeof rewardCoins === "number"
         ? `<div class="event-reward">奖励已发放：+${rewardCoins} 金币</div>`
         : ""

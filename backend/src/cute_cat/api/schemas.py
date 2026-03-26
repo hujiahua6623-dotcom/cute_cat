@@ -35,7 +35,7 @@ class LogoutRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    userId: str | None = None  # omitted on refresh
+    userId: str | None = None
     accessToken: str
     accessExpiresIn: int
     refreshToken: str
@@ -122,6 +122,7 @@ class HospitalTreatResponse(BaseModel):
     coinsAfter: int
     stats: dict[str, int]
     delta: dict[str, int]
+    narrativeSuggestions: list[str] = Field(default_factory=list)
 
 
 class ClientMessage(BaseModel):

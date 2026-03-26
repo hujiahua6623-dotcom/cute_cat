@@ -155,7 +155,7 @@ async def _handle_message(
         game_time = snapshot_game_time(settings, now)
         anchor = parse_anchor(settings.server_start_wall_clock)
         gt = get_game_time(now, anchor_wall_clock=anchor)
-        active_events = await build_active_events(session, garden_id=gid, pets=pets, gt=gt)
+        active_events = await build_active_events(session, settings=settings, garden_id=gid, pets=pets, gt=gt)
         await _send_json(
             websocket,
             {
@@ -297,6 +297,7 @@ async def _handle_message(
         await session.flush()
         event_payloads = await apply_event_hooks_after_action(
             session,
+            settings=settings,
             garden_id=gid,
             pet=pet,
             actor_user_id=user_id,

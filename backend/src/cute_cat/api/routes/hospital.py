@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
+from cute_cat.ai.service import append_milestone, generate_treatment_suggestions, refresh_pet_memory_summary
 from cute_cat.api.deps import CurrentUser
 from cute_cat.api.errors import ApiError
 from cute_cat.api.schemas import HospitalTreatRequest, HospitalTreatResponse
@@ -48,6 +49,9 @@ async def treat_pet(
         if new != old:
             delta[key] = new - old
 
+    suggestions = await generate_treatment_suggestions(settings, pet_name=pet.pet_name, delta=delta)
+    append_milestone(pet, title="完成一次医院治疗", source="hospital_treat")
+    await refresh_pet_memory_summary(settings, pet=pet)
     await session.commit()
     return HospitalTreatResponse(
         petId=pet.id,
@@ -55,4 +59,5 @@ async def treat_pet(
         coinsAfter=user.coins,
         stats=pet.stats,
         delta=delta,
+        narrativeSuggestions=suggestions,
     )

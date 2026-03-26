@@ -54,6 +54,10 @@ class Pet(Base):
     last_game_day_index: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # Consecutive days satisfying growth stability rule
     consecutive_stable_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Cycle 4 AI memory (controlled generated text)
+    memory_summary: Mapped[str] = mapped_column(String(512), default="", server_default="")
+    memory_milestones: Mapped[list] = mapped_column(JSON, default=list)
+    memory_last_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     state_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     last_seen_wall_clock: Mapped[datetime] = mapped_column(DateTime(timezone=True))

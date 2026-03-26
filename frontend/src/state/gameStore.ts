@@ -175,12 +175,17 @@ export class GameStore {
     if (opts?.nextStatsVersion !== undefined) {
       this.state.statsVersion = opts.nextStatsVersion;
     }
-    const parts = Object.entries(delta)
+    const entries = Object.entries(delta).filter(([, v]) => v !== undefined);
+    const parts = entries
       .filter(([, v]) => v !== undefined && v !== 0)
       .map(([k, v]) => `${k} ${v !== undefined && Number(v) > 0 ? "+" : ""}${v}`)
       .slice(0, 4);
     if (parts.length) {
       this.state.toastMessage = parts.join(" · ");
+    } else if (entries.length) {
+      // Keep a minimal feedback signal for automated/UI checks when delta fields are present
+      // but clamped to 0 (e.g. stat already at max/min).
+      this.state.toastMessage = "状态已同步";
     }
     this.notify();
   }

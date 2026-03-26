@@ -244,9 +244,11 @@
     "lastGameDayIndex": 15
   },
   "memory": {
-    "summary": "",
-    "milestones": [],
-    "lastUpdatedAt": null
+    "summary": "咪咪最近状态稳定，继续保持规律互动。",
+    "milestones": [
+      { "title": "完成一次每日任务", "source": "event_daily", "at": "2026-03-26T10:00:00Z" }
+    ],
+    "lastUpdatedAt": "2026-03-26T10:00:00Z"
   }
 }
 ```
@@ -371,7 +373,11 @@
   "delta": {
     "health": 10,
     "sickLevel": -2
-  }
+  },
+  "narrativeSuggestions": [
+    "治疗后先观察健康和情绪是否稳定",
+    "接下来优先进行温和互动，避免骤变操作"
+  ]
 }
 ```
 
@@ -522,6 +528,7 @@
 | `ownerUserId` | string? | 生日归属用户（前端用于只给主人弹窗） |
 | `title` | string? | 标题（占位文案可） |
 | `message` | string? | 短描述 |
+| `narrativeSuggestions` | array? | 受控建议文案（可选，字符串数组） |
 | `tasks` | array | `{ taskId, label, current, target, scope }`，`scope` 为 `pet` \| `garden` |
 | `endsAtGameTime` | object? | `{ gameDayIndex, gameHourFloat }`，可选 |
 
@@ -652,6 +659,7 @@
     "ownerUserId": "usr_01jqexample",
     "title": "生日快乐",
     "message": "今天好好陪它一下（占位）",
+    "narrativeSuggestions": ["先完成一次抱抱确认进度", "活动结束前检查奖励是否到账"],
     "tasks": [
       {
         "taskId": "cuddle_count",
@@ -700,6 +708,7 @@
 | 2026-03-24 | 周期 2 核心闭环：新增 `/shop/buy`、`/hospital/treat`；`Feed` 切换为库存驱动并要求有效 `itemId` |
 | 2026-03-24 | 补充库存读取接口：新增 `GET /shop/inventory`，用于前端库存面板服务端真值初始化 |
 | 2026-03-25 | 周期 3：`gardenSnapshot.payload.activeEvents`（SSOT）与 `eventBroadcast` 字段表；示例与 `doc/周期3-任务拆分.md` 一致 |
+| 2026-03-26 | 周期 4：受控 AI 字段补充（`memory.summary`/`milestones`、`event` 文案 `narrativeSuggestions`、`hospital/treat` 建议文案）；字段均可选并支持 fallback |
 
 ---
 

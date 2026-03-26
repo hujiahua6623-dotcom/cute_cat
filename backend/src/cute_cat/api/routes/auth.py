@@ -121,7 +121,13 @@ async def refresh_tokens(
         select(RefreshToken).where(RefreshToken.token_hash == th, RefreshToken.revoked.is_(False))
     )
     row = q.scalar_one_or_none()
-    if row is None or row.expires_at < datetime.now(UTC):
+    if row is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    expires_at = row.expires_at
+    if expires_at.tzinfo is None:
+        # Some MySQL drivers may deserialize timezone-aware columns as naive datetimes.
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at < datetime.now(UTC):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     row.revoked = True
@@ -142,6 +148,7 @@ async def refresh_tokens(
 
     access = create_access_token(settings, row.user_id)
     return TokenResponse(
+        userId=row.user_id,
         accessToken=access,
         accessExpiresIn=settings.jwt_access_ttl_seconds,
         refreshToken=opaque,

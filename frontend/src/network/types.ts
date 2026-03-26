@@ -85,6 +85,7 @@ export interface HospitalTreatResponse {
   coinsAfter: number;
   stats: PetStats;
   delta: Partial<PetStats>;
+  narrativeSuggestions: string[];
 }
 
 export interface OfflineSummaryResponse {
@@ -164,6 +165,7 @@ export interface GardenEventWire {
   ownerUserId?: string;
   title?: string;
   message?: string;
+  narrativeSuggestions?: string[];
 
   tasks?: GardenEventTaskWire[];
   endsAtGameTime?: GardenEventEndsAtGameTimeWire;

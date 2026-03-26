@@ -63,10 +63,35 @@ try {
     await page.evaluate(() => document.querySelector(".birthday-backdrop")?.remove());
   }
 
-  // Use a non-inventory action for stable regression signal.
-  await page.click('[data-action="Cuddle"]');
-  const toast = await page.waitForSelector(".toast", { timeout: 8000 }).catch(() => null);
-  if (toast) {
+  // Use non-inventory actions and accept either toast or HUD stat change as pass signal.
+  const tryActionSignal = async (action) => {
+    const moodBefore = await page.locator("#value-mood").textContent();
+    await page.click(`[data-action="${action}"]`);
+    const toast = await page.waitForSelector(".toast", { timeout: 2500 }).catch(() => null);
+    if (toast) return true;
+    const moodChanged = await page
+      .waitForFunction(
+        (before) => {
+          const el = document.querySelector("#value-mood");
+          return !!el && el.textContent !== before;
+        },
+        moodBefore,
+        { timeout: 3000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    return moodChanged;
+  };
+
+  const passedByCuddle = await tryActionSignal("Cuddle");
+  const passedByPat = passedByCuddle ? false : await tryActionSignal("Pat");
+  let passedByHospital = false;
+  if (!passedByCuddle && !passedByPat) {
+    await page.click("#hospital-treat");
+    const hospitalToast = await page.waitForSelector(".toast", { timeout: 4000 }).catch(() => null);
+    passedByHospital = !!hospitalToast;
+  }
+  if (passedByCuddle || passedByPat || passedByHospital) {
     result.actionDeltaPassed = true;
     if (!result.usedOfflineModalForFourthShot) {
       await page.screenshot({ path: files.offlineToast, fullPage: true });

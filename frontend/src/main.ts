@@ -305,7 +305,6 @@ async function enterGarden(): Promise<void> {
       return;
     }
     pointerBound = true;
-    g.setPetNormPosition(0.5, 0.5);
     g.pointerNormEmitter.on("move", onNormMove);
     pointerCleanup = () => {
       g.pointerNormEmitter.off("move", onNormMove);
@@ -374,6 +373,9 @@ async function enterGarden(): Promise<void> {
       store.overwriteStats(res.stats);
       store.setCoins(res.coinsAfter);
       showActionToast(`治疗成功：花费 ${res.treatCost}，剩余金币 ${res.coinsAfter}`);
+      if (res.narrativeSuggestions?.[0]) {
+        showActionToast(`护理建议：${res.narrativeSuggestions[0]}`);
+      }
     } catch (err) {
       const msg = err instanceof ApiRequestError ? `${err.code}: ${err.message}` : String(err);
       showActionToast(`治疗失败：${msg}`);
