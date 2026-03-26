@@ -52,7 +52,11 @@ async def claim_pet(
         growth_stage=0,
         birthday_game_day=gt.game_day_index,
         stats=default_stats(),
-        position={"x": 0.5, "y": 0.5},
+        # Spawn around center with deterministic spread to avoid complete overlap in shared garden.
+        position={
+            "x": 0.2 + ((abs(hash(pid)) % 6000) / 10000.0),
+            "y": 0.2 + (((abs(hash(pid)) // 6000) % 6000) / 10000.0),
+        },
         sick_window=[],
         diet_history=[],
         last_game_day_index=gt.game_day_index,

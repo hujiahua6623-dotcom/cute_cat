@@ -17,7 +17,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     nickname: Mapped[str] = mapped_column(String(64))
-    coins: Mapped[int] = mapped_column(Integer, default=100, server_default="100")
+    coins: Mapped[int] = mapped_column(Integer, default=500, server_default="500")
 
     pet: Mapped[Pet | None] = relationship(back_populates="owner", uselist=False)
 

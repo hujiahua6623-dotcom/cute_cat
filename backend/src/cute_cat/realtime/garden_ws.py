@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import math
 from datetime import UTC, datetime
 from typing import Any
 
@@ -31,6 +32,27 @@ router = APIRouter()
 
 async def _send_json(ws: WebSocket, msg: dict[str, Any]) -> None:
     await ws.send_json(msg)
+
+
+def _normalize_overlapped_pet_positions(pets: list[Pet]) -> None:
+    """Spread pets when multiple pets share the same exact position."""
+    buckets: dict[tuple[float, float], list[Pet]] = {}
+    for pet in pets:
+        pos = pet.position or {}
+        x = float(pos.get("x", 0.5))
+        y = float(pos.get("y", 0.5))
+        buckets.setdefault((round(x, 4), round(y, 4)), []).append(pet)
+
+    for (base_x, base_y), group in buckets.items():
+        if len(group) <= 1:
+            continue
+        n = len(group)
+        radius = min(0.24, 0.08 + n * 0.008)
+        for idx, pet in enumerate(sorted(group, key=lambda p: p.id)):
+            angle = (2 * math.pi * idx) / n
+            nx = max(0.1, min(0.9, base_x + radius * math.cos(angle)))
+            ny = max(0.14, min(0.9, base_y + radius * math.sin(angle)))
+            pet.position = {"x": round(nx, 4), "y": round(ny, 4)}
 
 
 @router.websocket("/ws/garden")
@@ -124,13 +146,22 @@ async def _handle_message(
         pets = list(q.scalars().all())
         for p in pets:
             reconcile_pet_now(p, settings)
+        _normalize_overlapped_pet_positions(pets)
+
+        owner_pet_pos: dict[str, dict[str, float]] = {}
+        for p in pets:
+            owner_pet_pos[p.owner_user_id] = p.position or {"x": 0.5, "y": 0.5}
 
         users_payload: list[dict[str, Any]] = []
         for p in pets:
             u = await session.get(User, p.owner_user_id)
             if u:
                 users_payload.append(
-                    {"userId": u.id, "nickname": u.nickname, "pointer": {"x": 0.5, "y": 0.5}}
+                    {
+                        "userId": u.id,
+                        "nickname": u.nickname,
+                        "pointer": owner_pet_pos.get(u.id, {"x": 0.5, "y": 0.5}),
+                    }
                 )
 
         pets_payload: list[dict[str, Any]] = []

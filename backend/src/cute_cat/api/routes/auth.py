@@ -44,7 +44,7 @@ async def register(
         email=body.email,
         password_hash=hash_password(body.password),
         nickname=body.nickname,
-        coins=100,
+        coins=500,
     )
     session.add(user)
     await session.flush()

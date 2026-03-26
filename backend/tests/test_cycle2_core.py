@@ -111,6 +111,23 @@ def test_cycle2_ws_feed_consumes_inventory_and_errors_when_empty(client_with_db:
         assert "inventory" in err["payload"]["message"].lower()
 
 
+def test_cycle2_join_snapshot_spreads_overlapped_pet_positions(client_with_db: TestClient) -> None:
+    c = client_with_db
+    headers_a, _, garden_id = _register_and_claim(c, "cycle2_pos_a@b.com")
+    _register_and_claim(c, "cycle2_pos_b@b.com")
+
+    rt = c.get("/api/v1/gardens/ws-ticket", headers=headers_a)
+    assert rt.status_code == 200, rt.text
+    ws_url = f"/api/v1/ws/garden?ticket={rt.json()['ticket']}"
+    with c.websocket_connect(ws_url) as ws:
+        ws.send_json({"type": "joinGarden", "requestId": "join-pos", "payload": {"gardenId": garden_id}})
+        snap = _ws_recv_until(ws, "gardenSnapshot")
+        pets = snap["payload"]["pets"]
+        assert len(pets) >= 2
+        coords = {(round(float(p["position"]["x"]), 4), round(float(p["position"]["y"]), 4)) for p in pets}
+        assert len(coords) > 1
+
+
 def test_cycle2_diet_shift_and_hospital_treat(client_with_db: TestClient) -> None:
     c = client_with_db
     headers, pet_id, _ = _register_and_claim(c, "cycle2_b@b.com")
