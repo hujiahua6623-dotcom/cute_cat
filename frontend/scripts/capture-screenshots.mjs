@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 
-const baseUrl = "http://localhost:5173";
+const baseUrl = "http://127.0.0.1:5173";
 const outDir = "/Users/wangshiya/work_njc/cursor_workplace/cute_cat/artifacts/screenshots";
 
 const files = {
@@ -67,7 +67,7 @@ try {
   const tryActionSignal = async (action) => {
     const moodBefore = await page.locator("#value-mood").textContent();
     await page.click(`[data-action="${action}"]`);
-    const toast = await page.waitForSelector(".toast", { timeout: 2500 }).catch(() => null);
+    const toast = await page.waitForSelector(".toast", { timeout: 5000 }).catch(() => null);
     if (toast) return true;
     const moodChanged = await page
       .waitForFunction(
@@ -76,7 +76,7 @@ try {
           return !!el && el.textContent !== before;
         },
         moodBefore,
-        { timeout: 3000 }
+        { timeout: 5000 }
       )
       .then(() => true)
       .catch(() => false);

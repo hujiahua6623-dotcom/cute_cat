@@ -42,6 +42,7 @@ def _ws_recv_until(ws, expected_type: str, max_steps: int = 10) -> dict:
 def test_cycle2_shop_inventory_and_feed_require_item(client_with_db: TestClient) -> None:
     c = client_with_db
     headers, _, _ = _register_and_claim(c, "cycle2_a@b.com")
+    coins_before = c.get("/api/v1/me", headers=headers).json()["coins"]
 
     r_bad = c.post("/api/v1/shop/buy", headers=headers, json={"itemId": "unknown_item", "count": 1})
     assert r_bad.status_code == 400
@@ -49,15 +50,15 @@ def test_cycle2_shop_inventory_and_feed_require_item(client_with_db: TestClient)
 
     r_buy = c.post("/api/v1/shop/buy", headers=headers, json={"itemId": "food_basic_01", "count": 2})
     assert r_buy.status_code == 200, r_buy.text
-    assert r_buy.json()["coinsAfter"] == 76
+    item = get_shop_item("food_basic_01")
+    assert item is not None
+    assert r_buy.json()["coinsAfter"] == coins_before - item.price_coins * 2
     r_inv = c.get("/api/v1/shop/inventory", headers=headers)
     assert r_inv.status_code == 200, r_inv.text
     items = r_inv.json()["items"]
     assert any(it["itemId"] == "food_basic_01" and int(it["count"]) == 2 for it in items)
 
     stats = {"hunger": 80, "health": 50, "mood": 50, "loyalty": 40, "sickLevel": 0}
-    item = get_shop_item("food_basic_01")
-    assert item is not None
     delta, _ = apply_action(stats, "Feed", item=item)
     assert delta["hunger"] < 0
     with pytest.raises(ValueError):
@@ -111,6 +112,57 @@ def test_cycle2_ws_feed_consumes_inventory_and_errors_when_empty(client_with_db:
         assert "inventory" in err["payload"]["message"].lower()
 
 
+def test_cycle2_ws_update_pointer_rejects_invalid_coordinates(client_with_db: TestClient) -> None:
+    c = client_with_db
+    headers, _, garden_id = _register_and_claim(c, "cycle2_ptr_invalid@b.com")
+    rt = c.get("/api/v1/gardens/ws-ticket", headers=headers)
+    assert rt.status_code == 200, rt.text
+    ws_url = f"/api/v1/ws/garden?ticket={rt.json()['ticket']}"
+
+    with c.websocket_connect(ws_url) as ws:
+        ws.send_json({"type": "joinGarden", "requestId": "join-invalid", "payload": {"gardenId": garden_id}})
+        _ws_recv_until(ws, "gardenSnapshot")
+        ws.send_json(
+            {
+                "type": "updatePointer",
+                "requestId": "ptr-invalid",
+                "payload": {"gardenId": garden_id, "x": "bad", "y": 0.2},
+            }
+        )
+        err = _ws_recv_until(ws, "error")
+        assert err["payload"]["code"] == "BAD_REQUEST"
+        assert "coordinates" in err["payload"]["message"].lower()
+
+
+def test_cycle2_ws_rate_limit_returns_too_many_requests(client_with_db: TestClient) -> None:
+    c = client_with_db
+    headers, _, garden_id = _register_and_claim(c, "cycle2_rate@b.com")
+    rt = c.get("/api/v1/gardens/ws-ticket", headers=headers)
+    assert rt.status_code == 200, rt.text
+    ws_url = f"/api/v1/ws/garden?ticket={rt.json()['ticket']}"
+
+    with c.websocket_connect(ws_url) as ws:
+        ws.send_json({"type": "joinGarden", "requestId": "join-rate", "payload": {"gardenId": garden_id}})
+        _ws_recv_until(ws, "gardenSnapshot")
+
+        for i in range(80):
+            ws.send_json(
+                {
+                    "type": "unknownTypeForLimit",
+                    "requestId": f"limit-{i}",
+                    "payload": {"gardenId": garden_id},
+                }
+            )
+
+        got_limit = False
+        for _ in range(120):
+            msg = ws.receive_json()
+            if msg.get("type") == "error" and msg.get("payload", {}).get("code") == "TOO_MANY_REQUESTS":
+                got_limit = True
+                break
+        assert got_limit
+
+
 def test_cycle2_join_snapshot_spreads_overlapped_pet_positions(client_with_db: TestClient) -> None:
     c = client_with_db
     headers_a, _, garden_id = _register_and_claim(c, "cycle2_pos_a@b.com")
@@ -131,6 +183,7 @@ def test_cycle2_join_snapshot_spreads_overlapped_pet_positions(client_with_db: T
 def test_cycle2_diet_shift_and_hospital_treat(client_with_db: TestClient) -> None:
     c = client_with_db
     headers, pet_id, _ = _register_and_claim(c, "cycle2_b@b.com")
+    coins_before = c.get("/api/v1/me", headers=headers).json()["coins"]
 
     diet_history = [
         {"gameDayIndex": 10, "itemId": "food_basic_01"},
@@ -155,7 +208,7 @@ def test_cycle2_diet_shift_and_hospital_treat(client_with_db: TestClient) -> Non
     data = rh.json()
     assert data["petId"] == pet_id
     assert int(data["stats"]["sickLevel"]) <= 0
-    assert data["coinsAfter"] <= 100
+    assert data["coinsAfter"] == coins_before - 30
 
 
 def test_cycle2_inventory_consume_service(client_with_db: TestClient) -> None:

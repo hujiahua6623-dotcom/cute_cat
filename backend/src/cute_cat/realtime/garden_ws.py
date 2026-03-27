@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import copy
+import json
+import logging
 import math
+import time
+from collections import deque
 from datetime import UTC, datetime
 from typing import Any
 
@@ -28,10 +32,47 @@ from cute_cat.services.inventory import consume_inventory
 from cute_cat.services.pet_state import reconcile_pet_now, snapshot_game_time
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _send_json(ws: WebSocket, msg: dict[str, Any]) -> None:
     await ws.send_json(msg)
+
+
+def _inbound_rate_limited(buffer: deque[float], max_per_second: int) -> bool:
+    now = time.monotonic()
+    one_second_ago = now - 1.0
+    while buffer and buffer[0] < one_second_ago:
+        buffer.popleft()
+    if len(buffer) >= max_per_second:
+        return True
+    buffer.append(now)
+    return False
+
+
+def _validate_inbound_message(settings, raw: Any) -> tuple[str | None, str | None, dict[str, Any] | None, str | None]:
+    if not isinstance(raw, dict):
+        return None, None, None, "Message must be an object"
+
+    payload_bytes = len(json.dumps(raw, ensure_ascii=False))
+    if payload_bytes > settings.ws_max_payload_bytes:
+        return None, None, None, "Message payload too large"
+
+    msg_type = raw.get("type")
+    if not isinstance(msg_type, str) or not msg_type:
+        return None, None, None, "Missing message type"
+
+    request_id = raw.get("requestId")
+    if request_id is not None and (not isinstance(request_id, str) or len(request_id) > settings.ws_max_request_id_len):
+        return None, None, None, "Invalid requestId"
+
+    pl = raw.get("payload")
+    if pl is None:
+        pl = {}
+    if not isinstance(pl, dict):
+        return None, request_id if isinstance(request_id, str) else None, None, "payload must be an object"
+
+    return msg_type, request_id if isinstance(request_id, str) else None, pl, None
 
 
 def _normalize_overlapped_pet_positions(pets: list[Pet]) -> None:
@@ -83,13 +124,33 @@ async def garden_socket(
         nickname = user.nickname
 
     conn = GardenConnection(user_id=user_id, nickname=nickname, garden_id=None, websocket=websocket)
+    inbound_ticks: deque[float] = deque()
 
     try:
         while True:
             raw = await websocket.receive_json()
-            msg_type = raw.get("type")
-            request_id = raw.get("requestId")
-            pl = raw.get("payload") or {}
+            if _inbound_rate_limited(inbound_ticks, settings.ws_max_messages_per_second):
+                logger.warning("ws_rate_limited user_id=%s", user_id)
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "error",
+                        "payload": {"code": "TOO_MANY_REQUESTS", "message": "WebSocket message rate exceeded"},
+                    },
+                )
+                continue
+            msg_type, request_id, pl, err = _validate_inbound_message(settings, raw)
+            if err:
+                logger.warning("ws_bad_message user_id=%s reason=%s", user_id, err)
+                await _send_json(
+                    websocket,
+                    {
+                        "type": "error",
+                        "requestId": request_id,
+                        "payload": {"code": "BAD_REQUEST", "message": err},
+                    },
+                )
+                continue
 
             async with factory() as session:
                 await _handle_message(
@@ -105,6 +166,7 @@ async def garden_socket(
                 )
 
     except WebSocketDisconnect:
+        logger.info("ws_disconnect user_id=%s garden_id=%s", user_id, conn.garden_id)
         gid = conn.garden_id
         hub.detach(conn)
         if gid:
@@ -129,6 +191,16 @@ async def _handle_message(
 ) -> None:
     if msg_type == "joinGarden":
         gid = str(pl.get("gardenId", ""))
+        if not gid:
+            await _send_json(
+                websocket,
+                {
+                    "type": "error",
+                    "requestId": request_id,
+                    "payload": {"code": "BAD_REQUEST", "message": "gardenId is required"},
+                },
+            )
+            return
         if gid != garden_from_ticket:
             await _send_json(
                 websocket,
@@ -182,6 +254,7 @@ async def _handle_message(
         await session.commit()
 
         hub.attach(gid, conn)
+        logger.info("ws_join_garden user_id=%s garden_id=%s pets=%s", user_id, gid, len(pets))
         now = datetime.now(UTC)
         game_time = snapshot_game_time(settings, now)
         anchor = parse_anchor(settings.server_start_wall_clock)
@@ -209,8 +282,29 @@ async def _handle_message(
         gid = str(pl.get("gardenId", ""))
         if conn.garden_id != gid:
             return
-        x = float(pl.get("x", 0))
-        y = float(pl.get("y", 0))
+        try:
+            x = float(pl.get("x", 0))
+            y = float(pl.get("y", 0))
+        except (TypeError, ValueError):
+            await _send_json(
+                websocket,
+                {
+                    "type": "error",
+                    "requestId": request_id,
+                    "payload": {"code": "BAD_REQUEST", "message": "Pointer coordinates must be numbers"},
+                },
+            )
+            return
+        if not (math.isfinite(x) and math.isfinite(y) and 0 <= x <= 1 and 0 <= y <= 1):
+            await _send_json(
+                websocket,
+                {
+                    "type": "error",
+                    "requestId": request_id,
+                    "payload": {"code": "BAD_REQUEST", "message": "Pointer coordinates out of range"},
+                },
+            )
+            return
         others = hub.others_in_garden(gid, user_id)
         for other in others:
             await _send_json(
@@ -336,6 +430,7 @@ async def _handle_message(
             gt=gt,
         )
         await session.commit()
+        logger.info("ws_pet_action user_id=%s garden_id=%s pet_id=%s action=%s", user_id, gid, pet_id, action_type)
 
         for target in hub.all_in_garden(gid):
             await _send_json(

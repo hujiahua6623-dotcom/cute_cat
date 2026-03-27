@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     server_start_wall_clock: str | None = Field(None, validation_alias="SERVER_START_WALL_CLOCK")
 
     ws_ticket_ttl_seconds: int = Field(60, validation_alias="WS_TICKET_TTL_SECONDS")
+    ws_max_messages_per_second: int = Field(30, validation_alias="WS_MAX_MESSAGES_PER_SECOND")
+    ws_max_payload_bytes: int = Field(4096, validation_alias="WS_MAX_PAYLOAD_BYTES")
+    ws_max_request_id_len: int = Field(64, validation_alias="WS_MAX_REQUEST_ID_LEN")
     public_base_url: str = Field("http://localhost:8000", validation_alias="PUBLIC_BASE_URL")
     dashscope_api_key: str = Field("", validation_alias="DASHSCOPE_API_KEY")
     qwen_model: str = Field("qwen-plus", validation_alias="QWEN_MODEL")

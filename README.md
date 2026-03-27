@@ -6,14 +6,14 @@
 ## 当前状态
 
 - 产品设计文档与开源基础文档齐备；迭代路线见 `doc/开发周期计划.md`
-- **后端（周期 4 进行中）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket、三动作、商店/库存/医院、成长窗口与事件系统（`activeEvents` SSOT、`eventBroadcast` 增量）；并新增 `backend/src/cute_cat/ai/` 受控文案与记忆摘要服务（含超时/失败 fallback），接入生日/每日/社交事件与治疗完成触发点。详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
-- **前端（周期 4 进行中）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、商店库存、成长 HUD、医院治疗与三动作；事件 UI 现支持展示受控建议文案（`narrativeSuggestions`）并保留字段缺失降级。Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
+- **后端（周期 5 进行中）**：`backend/` 已实现 FastAPI、JWT + MySQL/SQLite、宠物领养、离线摘要、花园 WebSocket、三动作、商店/库存/医院、成长窗口与事件系统（`activeEvents` SSOT、`eventBroadcast` 增量）；周期 4 的 `backend/src/cute_cat/ai/` 受控文案与记忆摘要服务已完成双路径验收（AI 可用 + fallback 兜底），当前进入周期 5 打磨与部署准备。详见 [`backend/README.md`](backend/README.md) 与 [`doc/开发进度日志.md`](doc/开发进度日志.md)
+- **前端（周期 5 进行中）**：`frontend/` 为 `Vite + TypeScript` + `Phaser 3`，含鉴权/领宠、离线摘要、`joinGarden`、商店库存、成长 HUD、医院治疗与三动作；事件 UI 支持受控建议文案（`narrativeSuggestions`）并保留字段缺失降级。Vite 将 `/api` 代理到后端（见 [`frontend/vite.config.ts`](frontend/vite.config.ts)）；详见 [`frontend/README.md`](frontend/README.md)
 
 ## Current Phase Card（唯一阶段口径）
 
-- Current phase: **周期 4 进行中（LangChain 受控 AI）**
-- Done: 周期 0、周期 1、周期 1A（视觉整合冲刺）、周期 2（经济/生病/成长，已正式收口）、**周期 3（事件系统：生日 + 花园社交，已验收）**
-- In progress focus: 周期 4——在不改经济/概率核心参数前提下接入 `backend/ai/` 受控生成（`memory.summary`、`milestones`、活动文案、`narrativeSuggestions`），并确保失败兜底不影响可玩性（详见 `doc/开发周期计划.md` §周期 4）
+- Current phase: **周期 5 进行中（打磨、部署与可选演进）**
+- Done: 周期 0、周期 1、周期 1A（视觉整合冲刺）、周期 2（经济/生病/成长，已正式收口）、周期 3（事件系统：生日 + 花园社交，已验收）、**周期 4（LangChain 受控 AI，双路径验收通过）**
+- In progress focus: 周期 5——性能与安全基线（限流/输入校验/日志）、`infra/` 运行与部署说明、跨周期 backlog（社交调度策略/事件 UI 精修/库存 WS 增量）按触发条件收口（详见 `doc/开发周期计划.md` §周期 5）
 - Evidence source: `doc/开发进度日志.md` 最新日期小节
 - Gate source: `doc/开发周期计划.md`（周期门禁与触发条件）
 
@@ -58,6 +58,21 @@ npm run dev
 浏览器打开 Vite 提示的地址（默认 `http://localhost:5173`）；需同时启动后端以便登录与 WebSocket 联调。
 
 详见 [`frontend/README.md`](frontend/README.md)。
+
+### Docker Compose 联调（可选）
+
+```bash
+cd infra
+cp .env.example .env
+docker compose up -d --build
+```
+
+默认暴露：
+
+- 前端：`http://localhost:5173`
+- 后端：`http://localhost:8000`
+
+详见 [`infra/README.md`](infra/README.md)。
 
 ## 文档导航
 
