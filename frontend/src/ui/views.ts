@@ -15,7 +15,10 @@ export function createAuthView(): AuthViewRefs {
   const wrap = document.createElement("div");
   wrap.className = "panel auth-page";
   wrap.innerHTML = `
-    <h1 class="auth-title">小屋里的电子宠物</h1>
+    <div class="auth-head">
+      <span class="auth-chip">欢迎回来</span>
+      <h1 class="auth-title">小屋里的电子宠物</h1>
+    </div>
     <div class="tabs">
       <button type="button" data-tab="login" class="active">登录</button>
       <button type="button" data-tab="register">注册</button>
@@ -73,7 +76,10 @@ export function createClaimView(petTypes: readonly string[]): ClaimViewRefs {
   const wrap = document.createElement("div");
   wrap.className = "panel auth-page";
   wrap.innerHTML = `
-    <h2 class="section-title">领养宠物</h2>
+    <div class="auth-head">
+      <span class="auth-chip">开始陪伴</span>
+      <h2 class="section-title">领养宠物</h2>
+    </div>
     <form id="claim-form">
       <div class="field">
         <label for="petName">名字</label>
@@ -106,6 +112,17 @@ export interface GardenViewRefs {
   root: HTMLDivElement;
   wsBar: HTMLElement;
   gameMount: HTMLElement;
+  toggleStatsBtn: HTMLButtonElement;
+  toggleEventsBtn: HTMLButtonElement;
+  eventDot: HTMLElement;
+  dockShopBtn: HTMLButtonElement;
+  dockBagBtn: HTMLButtonElement;
+  dockHospitalBtn: HTMLButtonElement;
+  dockClosePanelBtn: HTMLButtonElement;
+  floatingPanel: HTMLElement;
+  panelShop: HTMLElement;
+  panelInventory: HTMLElement;
+  panelHospital: HTMLElement;
   barHunger: HTMLElement;
   barHealth: HTMLElement;
   barMood: HTMLElement;
@@ -127,49 +144,69 @@ export function createGardenView(): GardenViewRefs {
   const root = document.createElement("div");
   root.className = "garden-layout";
   root.innerHTML = `
-    <div id="ws-bar" class="ws-bar connecting" role="status"><span class="ws-dot"></span>连接中…</div>
-    <div class="garden-row">
+    <div class="garden-stage">
       <div id="game-mount" class="game-mount"></div>
-      <aside class="hud panel">
-        <div class="meta-line" id="garden-meta"></div>
-        <div class="stat-grid">
-          <div class="stat-row"><label>饱腹</label><div class="stat-bar"><span id="bar-hunger" style="width:0%"></span></div><span class="stat-value" id="value-hunger">--</span></div>
-          <div class="stat-row"><label>健康</label><div class="stat-bar health"><span id="bar-health" style="width:0%"></span></div><span class="stat-value" id="value-health">--</span></div>
-          <div class="stat-row"><label>情绪</label><div class="stat-bar mood"><span id="bar-mood" style="width:0%"></span></div><span class="stat-value" id="value-mood">--</span></div>
-        </div>
-        <div class="meta-line" id="growth-line"></div>
+      <div id="ws-bar" class="ws-bar ws-corner connecting" role="status" aria-label="连接中"><span class="ws-dot"></span></div>
 
-        <div class="event-section">
-          <div class="section-subtitle">活动</div>
+      <div class="overlay-controls">
+        <button type="button" class="overlay-toggle" id="toggle-stats">属性</button>
+        <button type="button" class="overlay-toggle" id="toggle-events">活动<span id="event-dot" class="event-dot hidden"></span></button>
+      </div>
+
+      <div class="overlay-top panel hud-compact hidden">
+        <div class="hud-title">宠物状态</div>
+        <div class="meta-line meta-pills" id="garden-meta"></div>
+        <div class="stat-grid compact">
+          <div class="stat-row"><label class="stat-label hunger">饱腹</label><div class="stat-bar"><span id="bar-hunger" style="width:0%"></span></div><span class="stat-value" id="value-hunger">--</span></div>
+          <div class="stat-row"><label class="stat-label health">健康</label><div class="stat-bar health"><span id="bar-health" style="width:0%"></span></div><span class="stat-value" id="value-health">--</span></div>
+          <div class="stat-row"><label class="stat-label mood">情绪</label><div class="stat-bar mood"><span id="bar-mood" style="width:0%"></span></div><span class="stat-value" id="value-mood">--</span></div>
+        </div>
+        <div class="meta-line meta-pills" id="growth-line"></div>
+      </div>
+
+      <div class="overlay-event panel event-floating hidden">
+          <div class="section-subtitle">活动看板</div>
           <div class="event-list" id="event-list">暂无活动</div>
-        </div>
+      </div>
 
-        <div class="action-bar">
-          <button type="button" class="btn" data-action="Feed">喂食</button>
-          <button type="button" class="btn" data-action="Cuddle">抱抱</button>
-          <button type="button" class="btn" data-action="Pat">摸头</button>
+      <div id="floating-panel" class="floating-panel panel hidden">
+        <div class="panel-top">
+          <span class="section-subtitle">操作面板</span>
+          <button type="button" class="btn btn-secondary panel-close" id="dock-close-panel">关闭</button>
         </div>
-        <div class="field shop-field">
-          <label for="feed-item-select">喂食道具（库存）</label>
-          <select id="feed-item-select">
-            <option value="">请选择库存道具</option>
-          </select>
-        </div>
-        <div class="shop-section">
-          <div class="section-subtitle">商店</div>
+        <div id="panel-shop" class="panel-section">
+          <div class="section-subtitle">商店货架</div>
           <div class="shop-rows" id="shop-rows"></div>
         </div>
-        <div class="shop-section">
-          <div class="section-subtitle">库存</div>
+        <div id="panel-inventory" class="panel-section">
+          <div class="section-subtitle">背包库存</div>
           <div class="inventory-list" id="inventory-list">暂无库存</div>
+          <div class="field shop-field">
+            <label for="feed-item-select">喂食道具（库存）</label>
+            <select id="feed-item-select">
+              <option value="">请选择库存道具</option>
+            </select>
+          </div>
         </div>
-        <div class="action-bar shop-actions">
-          <button type="button" class="btn btn-secondary" id="hospital-treat">去医院治疗</button>
+        <div id="panel-hospital" class="panel-section">
+          <div class="section-subtitle">医院</div>
+          <div class="action-bar shop-actions">
+            <button type="button" class="btn btn-secondary" id="hospital-treat">去医院治疗</button>
+          </div>
         </div>
-        <div class="btn-row hud-foot">
-          <button type="button" class="btn btn-secondary" id="leave-garden">退出</button>
+      </div>
+
+      <div class="overlay-dock">
+        <div class="action-dock">
+          <button type="button" class="dock-action" data-action="Feed" title="喂食"><span class="dock-icon icon-feed" aria-hidden="true"></span><span>喂食</span></button>
+          <button type="button" class="dock-action" data-action="Cuddle" title="抱抱"><span class="dock-icon icon-cuddle" aria-hidden="true"></span><span>抱抱</span></button>
+          <button type="button" class="dock-action" data-action="Pat" title="摸头"><span class="dock-icon icon-pat" aria-hidden="true"></span><span>摸头</span></button>
+          <button type="button" class="dock-action utility" id="dock-shop" title="商店"><span class="dock-icon icon-shop" aria-hidden="true"></span><span>商店</span></button>
+          <button type="button" class="dock-action utility" id="dock-bag" title="背包"><span class="dock-icon icon-bag" aria-hidden="true"></span><span>背包</span></button>
+          <button type="button" class="dock-action utility" id="dock-hospital" title="医院"><span class="dock-icon icon-hospital" aria-hidden="true"></span><span>医院</span></button>
+          <button type="button" class="dock-action utility danger" id="leave-garden" title="退出"><span class="dock-icon icon-leave" aria-hidden="true"></span><span>退出</span></button>
         </div>
-      </aside>
+      </div>
     </div>
   `;
 
@@ -177,6 +214,17 @@ export function createGardenView(): GardenViewRefs {
     root,
     wsBar: root.querySelector("#ws-bar") as HTMLElement,
     gameMount: root.querySelector("#game-mount") as HTMLElement,
+    toggleStatsBtn: root.querySelector("#toggle-stats") as HTMLButtonElement,
+    toggleEventsBtn: root.querySelector("#toggle-events") as HTMLButtonElement,
+    eventDot: root.querySelector("#event-dot") as HTMLElement,
+    dockShopBtn: root.querySelector("#dock-shop") as HTMLButtonElement,
+    dockBagBtn: root.querySelector("#dock-bag") as HTMLButtonElement,
+    dockHospitalBtn: root.querySelector("#dock-hospital") as HTMLButtonElement,
+    dockClosePanelBtn: root.querySelector("#dock-close-panel") as HTMLButtonElement,
+    floatingPanel: root.querySelector("#floating-panel") as HTMLElement,
+    panelShop: root.querySelector("#panel-shop") as HTMLElement,
+    panelInventory: root.querySelector("#panel-inventory") as HTMLElement,
+    panelHospital: root.querySelector("#panel-hospital") as HTMLElement,
     barHunger: root.querySelector("#bar-hunger") as HTMLElement,
     barHealth: root.querySelector("#bar-health") as HTMLElement,
     barMood: root.querySelector("#bar-mood") as HTMLElement,

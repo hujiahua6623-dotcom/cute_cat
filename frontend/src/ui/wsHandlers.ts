@@ -26,6 +26,7 @@ interface WsHandlerDeps {
     clearRemotePointers: () => void;
     setRemotePointerNorm: (userId: string, x: number, y: number) => void;
     removeRemotePointer: (userId: string) => void;
+    playPetAction: (petId: string, actionType: string) => void;
   } | null;
   syncHud: () => void;
   onInventoryChanged?: (itemId: string, count: number) => void;
@@ -98,7 +99,10 @@ export function createWsMessageHandler(deps: WsHandlerDeps): (msg: WsServerMessa
       typeof msg.payload === "object" &&
       "actorUserId" in msg.payload
     ) {
-      const pl = msg.payload as { actorUserId: string; actionType: string };
+      const pl = msg.payload as { actorUserId: string; actionType: string; petId?: string };
+      if (pl.petId) {
+        getScene()?.playPetAction(pl.petId, pl.actionType);
+      }
       if (pl.actorUserId !== me.userId) {
         showActionToast(`他人：${pl.actionType}`);
       }

@@ -20,7 +20,7 @@ export function showOfflineModal(reasons: string[], suggested: string): Promise<
     backdrop.className = "modal-backdrop";
     const list = reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
     backdrop.innerHTML = `
-      <div class="panel modal">
+      <div class="panel modal modal--pixel">
         <h2>离线摘要</h2>
         <p class="offline-meta">系统已按真实时间持续结算宠物状态</p>
         <p>你离开期间，花园里发生的事：</p>
@@ -39,7 +39,7 @@ export function showOfflineModal(reasons: string[], suggested: string): Promise<
 
 export function showActionToast(text: string): void {
   const el = document.createElement("div");
-  el.className = text.startsWith("他人：") ? "toast toast--remote" : "toast";
+  el.className = text.startsWith("他人：") ? "toast toast--remote toast--pixel" : "toast toast--pixel";
   el.textContent = text;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2400);

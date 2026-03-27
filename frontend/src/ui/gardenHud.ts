@@ -25,11 +25,11 @@ export function renderGardenHud(state: GameStoreState, view: GardenViewRefs): vo
 
   const gt = state.gameTime;
   view.gardenMeta.textContent = gt
-    ? `游戏时间：第 ${gt.gameDayIndex} 天 · ${gt.gameHourFloat.toFixed(2)} 时 · ${state.nickname ?? ""} · 金币 ${state.coins ?? "--"}`
+    ? `第 ${gt.gameDayIndex} 天 · ${gt.gameHourFloat.toFixed(1)} 时 · ${state.nickname ?? "玩家"} · 金币 ${state.coins ?? "--"}`
     : "";
   view.growthLine.textContent =
     state.growthStage !== null && state.stabilityScore !== null
-      ? `成长阶段 ${state.growthStage} · 稳定度 ${state.stabilityScore.toFixed(2)} · 连稳 ${state.consecutiveStableDays ?? "-"} · 窗口病史 ${state.sickCountInWindow ?? "-"} · 窗口天数 ${state.windowGameDays ?? "-"} · 最近结算日 ${state.lastGameDayIndex ?? "-"}`
+      ? `阶段 ${state.growthStage} · 稳定 ${state.stabilityScore.toFixed(2)} · 连稳 ${state.consecutiveStableDays ?? "-"} · 病史 ${state.sickCountInWindow ?? "-"}`
       : "";
 
   // Event priority:
@@ -45,7 +45,7 @@ export function renderGardenHud(state: GameStoreState, view: GardenViewRefs): vo
 
   if (event.eventType === "social" && !ownDailyEvent) {
     view.eventList.innerHTML = `
-      <div class="event-title">${event.title ?? "花园活动"}</div>
+      <div class="event-head"><span class="event-badge">社交</span><div class="event-title">${event.title ?? "花园活动"}</div></div>
       <div class="event-task-label">当前账号暂无每日任务，摸头不会推进该条目。</div>
     `;
     return;
@@ -59,8 +59,14 @@ export function renderGardenHud(state: GameStoreState, view: GardenViewRefs): vo
 
   const rewardCoins = event.rewardsGranted?.coins;
   const taskPct = task.target > 0 ? statPercent((task.current / task.target) * 100) : 0;
+  const badge = event.eventType === "daily" ? "每日" : event.eventType === "birthday" ? "生日" : "活动";
+  const phaseText = event.phase === "ended" ? "已结束" : event.phase === "tick" ? "进行中" : "已开始";
 
   view.eventList.innerHTML = `
+    <div class="event-head">
+      <span class="event-badge">${badge}</span>
+      <span class="event-phase ${event.phase === "ended" ? "ended" : "active"}">${phaseText}</span>
+    </div>
     <div class="event-title">${event.title ?? "活动任务"}</div>
     <div class="event-task-label">${task.label}</div>
     <div class="event-progress-bar stat-bar">
@@ -81,13 +87,16 @@ export function renderGardenHud(state: GameStoreState, view: GardenViewRefs): vo
 }
 
 const WS_LABELS: Record<string, string> = {
-  connecting: "连接中…",
-  connected: "已连接",
-  reconnecting: "重连中…",
-  disconnected: "连接断开",
+  connecting: "连接中",
+  connected: "在线",
+  reconnecting: "重连",
+  disconnected: "离线",
 };
 
 export function renderWsStatusBar(wsBar: HTMLElement, status: string): void {
-  wsBar.className = `ws-bar ${status}`;
-  wsBar.innerHTML = `<span class="ws-dot"></span>${WS_LABELS[status] ?? status}`;
+  wsBar.className = `ws-bar ws-corner ${status}`;
+  const label = WS_LABELS[status] ?? status;
+  wsBar.title = label;
+  wsBar.setAttribute("aria-label", label);
+  wsBar.innerHTML = `<span class="ws-dot"></span><span class="ws-label">${label}</span>`;
 }

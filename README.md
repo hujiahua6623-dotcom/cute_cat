@@ -31,7 +31,7 @@
 - 数据：**MySQL 8**（开发可用本机实例）+ SQLAlchemy 2.0 + Alembic；可选 **Redis**（会话/限流/多 worker 协调）
 - 后端 AI：`LangChain` + 阿里云 **DashScope**（通义千问，如 `qwen-plus`）
 - 前端：`Vite + TypeScript` + `Phaser 3`
-- UI 方案：HTML/CSS 叠层（状态条、按钮、弹窗等）
+- UI 方案：HTML/CSS 叠层 + 运行时像素资源皮肤（`frontend/public/assets/game/*`）
 
 本地配置占位：复制根目录 `.env.example` 为 `.env` 并填写密钥（勿提交）。
 
@@ -86,6 +86,8 @@ docker compose up -d --build
 - 开发进度日志：`doc/开发进度日志.md`
 - 分周期开发计划：`doc/开发周期计划.md`
 - 周期 5 发布前检查单：`doc/周期5-发布前检查单.md`
+- 周期 5 UI 还原验收清单：`doc/周期5-UI还原验收清单.md`
+- 像素美术资源规格与交付清单：`doc/像素美术资源规格与交付清单.md`
 - 周期 3 任务与已定稿口径：`doc/周期3-任务拆分.md`
 
 ## 流程防复发机制

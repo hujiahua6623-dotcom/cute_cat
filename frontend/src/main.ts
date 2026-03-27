@@ -18,12 +18,17 @@ function clearView(): void {
   app.innerHTML = "";
 }
 
+function mountView(el: HTMLElement): void {
+  el.classList.add("view-enter");
+  app.appendChild(el);
+}
+
 function renderAuth(): void {
   clearView();
   let mode: "login" | "register" = "login";
   const refs = createAuthView();
   const { wrap, tabLogin, tabRegister, form, healthMsg, healthCheck, submit } = refs;
-  app.appendChild(wrap);
+  mountView(wrap);
 
   const syncTab = (): void => {
     mode = tabRegister.classList.contains("active") ? "register" : "login";
@@ -87,7 +92,7 @@ function renderClaim(): void {
   clearView();
   const refs = createClaimView(PET_TYPES);
   const { wrap, form, petNameInput, petTypeSelect, submit, logout } = refs;
-  app.appendChild(wrap);
+  mountView(wrap);
 
   logout.addEventListener("click", () => {
     clearTokens();
@@ -178,8 +183,27 @@ async function enterGarden(): Promise<void> {
   gardenSessionCancelled = false;
   clearView();
   const view = createGardenView();
-  const { root, wsBar, actionButtons, feedSelect, inventoryList, shopRows, hospitalTreatBtn, leaveButton } = view;
-  app.appendChild(root);
+  const {
+    root,
+    wsBar,
+    toggleStatsBtn,
+    toggleEventsBtn,
+    actionButtons,
+    feedSelect,
+    inventoryList,
+    shopRows,
+    hospitalTreatBtn,
+    leaveButton,
+    dockShopBtn,
+    dockBagBtn,
+    dockHospitalBtn,
+    dockClosePanelBtn,
+    floatingPanel,
+    panelShop,
+    panelInventory,
+    panelHospital,
+  } = view;
+  mountView(root);
   const shopCatalog = [
     { itemId: "food_basic_01", label: "基础口粮", price: 12 },
     { itemId: "food_fancy_01", label: "精致盛宴", price: 26 },
@@ -271,6 +295,42 @@ async function enterGarden(): Promise<void> {
     shopRows.appendChild(row);
   }
   await syncInventoryFromServer();
+  const statsOverlay = root.querySelector(".overlay-top") as HTMLElement;
+  const eventOverlay = root.querySelector(".overlay-event") as HTMLElement;
+  let seenActiveEventSignature = "";
+  const getActiveEventSignature = (): string => {
+    const state = store.getState();
+    return [...state.activeEvents.values()]
+      .filter((ev) => ev.phase !== "ended")
+      .map((ev) => `${ev.eventId}:${ev.phase}`)
+      .sort()
+      .join("|");
+  };
+  toggleStatsBtn.addEventListener("click", () => {
+    statsOverlay.classList.toggle("hidden");
+  });
+  toggleEventsBtn.addEventListener("click", () => {
+    eventOverlay.classList.toggle("hidden");
+    if (!eventOverlay.classList.contains("hidden")) {
+      seenActiveEventSignature = getActiveEventSignature();
+      view.eventDot.classList.add("hidden");
+    }
+  });
+
+  const openPanel = (mode: "shop" | "bag" | "hospital"): void => {
+    floatingPanel.classList.remove("hidden");
+    panelShop.style.display = mode === "shop" ? "block" : "none";
+    panelInventory.style.display = mode === "bag" ? "block" : "none";
+    panelHospital.style.display = mode === "hospital" ? "block" : "none";
+  };
+  const closePanel = (): void => {
+    floatingPanel.classList.add("hidden");
+  };
+  dockShopBtn.addEventListener("click", () => openPanel("shop"));
+  dockBagBtn.addEventListener("click", () => openPanel("bag"));
+  dockHospitalBtn.addEventListener("click", () => openPanel("hospital"));
+  dockClosePanelBtn.addEventListener("click", closePanel);
+
   inventorySyncTimer = setInterval(() => {
     if (gardenSessionCancelled) return;
     void syncInventoryFromServer();
@@ -280,6 +340,16 @@ async function enterGarden(): Promise<void> {
     const state = store.getState();
     try {
       renderGardenHud(state, view);
+      const currentActiveEventSignature = getActiveEventSignature();
+      if (!currentActiveEventSignature) {
+        view.eventDot.classList.add("hidden");
+      } else if (eventOverlay.classList.contains("hidden")) {
+        const hasNewActiveEvent = currentActiveEventSignature !== seenActiveEventSignature;
+        view.eventDot.classList.toggle("hidden", !hasNewActiveEvent);
+      } else {
+        seenActiveEventSignature = currentActiveEventSignature;
+        view.eventDot.classList.add("hidden");
+      }
     } catch (error) {
       throw error;
     }

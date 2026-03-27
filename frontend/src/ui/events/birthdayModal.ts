@@ -38,7 +38,7 @@ export function openBirthdayModal(ev: GardenEventWire): void {
   backdrop.className = "modal-backdrop birthday-backdrop";
 
   const panel = document.createElement("div");
-  panel.className = "panel modal birthday-panel";
+  panel.className = "panel modal modal--pixel birthday-panel";
 
   panel.innerHTML = `
     <h2 class="birthday-title">${ev.title ?? "生日庆典"}</h2>
