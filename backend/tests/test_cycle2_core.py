@@ -94,6 +94,9 @@ def test_cycle2_ws_feed_consumes_inventory_and_errors_when_empty(client_with_db:
         )
         delta = _ws_recv_until(ws, "petStateDelta")
         assert delta["payload"]["petId"] == pet_id
+        inv = _ws_recv_until(ws, "inventoryChanged")
+        assert inv["payload"]["itemId"] == "food_basic_01"
+        assert int(inv["payload"]["count"]) == 0
 
         ws.send_json(
             {
@@ -161,6 +164,25 @@ def test_cycle2_ws_rate_limit_returns_too_many_requests(client_with_db: TestClie
                 got_limit = True
                 break
         assert got_limit
+
+
+def test_cycle2_shop_buy_pushes_inventory_changed_to_online_ws(client_with_db: TestClient) -> None:
+    c = client_with_db
+    headers, _, garden_id = _register_and_claim(c, "cycle2_buy_ws@b.com")
+    rt = c.get("/api/v1/gardens/ws-ticket", headers=headers)
+    assert rt.status_code == 200, rt.text
+    ws_url = f"/api/v1/ws/garden?ticket={rt.json()['ticket']}"
+
+    with c.websocket_connect(ws_url) as ws:
+        ws.send_json({"type": "joinGarden", "requestId": "join-buy", "payload": {"gardenId": garden_id}})
+        _ws_recv_until(ws, "gardenSnapshot")
+
+        buy = c.post("/api/v1/shop/buy", headers=headers, json={"itemId": "food_basic_01", "count": 1})
+        assert buy.status_code == 200, buy.text
+
+        inv = _ws_recv_until(ws, "inventoryChanged")
+        assert inv["payload"]["itemId"] == "food_basic_01"
+        assert int(inv["payload"]["count"]) == 1
 
 
 def test_cycle2_join_snapshot_spreads_overlapped_pet_positions(client_with_db: TestClient) -> None:

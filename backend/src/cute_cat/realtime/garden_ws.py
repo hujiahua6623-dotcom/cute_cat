@@ -375,6 +375,7 @@ async def _handle_message(
         gt = get_game_time(now_wall, anchor_wall_clock=anchor)
         try:
             food_item = None
+            inventory_after_feed: int | None = None
             if action_type == "Feed":
                 food_id = str(item_id or "")
                 food_item = get_shop_item(food_id)
@@ -388,6 +389,7 @@ async def _handle_message(
                 )
                 if consumed is None:
                     raise ValueError("Not enough inventory for Feed")
+                inventory_after_feed = int(consumed.count)
                 pet.diet_history = append_diet_history(
                     pet.diet_history or [],
                     game_day_index=gt.game_day_index,
@@ -466,6 +468,22 @@ async def _handle_message(
                 await _send_json(
                     target.websocket,
                     {"type": "eventBroadcast", "payload": ev},
+                )
+            if (
+                action_type == "Feed"
+                and target.user_id == user_id
+                and food_item is not None
+                and inventory_after_feed is not None
+            ):
+                await _send_json(
+                    target.websocket,
+                    {
+                        "type": "inventoryChanged",
+                        "payload": {
+                            "itemId": food_item.item_id,
+                            "count": inventory_after_feed,
+                        },
+                    },
                 )
         return
 

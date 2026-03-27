@@ -28,10 +28,11 @@ interface WsHandlerDeps {
     removeRemotePointer: (userId: string) => void;
   } | null;
   syncHud: () => void;
+  onInventoryChanged?: (itemId: string, count: number) => void;
 }
 
 export function createWsMessageHandler(deps: WsHandlerDeps): (msg: WsServerMessage) => void {
-  const { me, store, getScene, syncHud } = deps;
+  const { me, store, getScene, syncHud, onInventoryChanged } = deps;
 
   return (msg: WsServerMessage): void => {
     const uid = store.getState().userId;
@@ -78,6 +79,17 @@ export function createWsMessageHandler(deps: WsHandlerDeps): (msg: WsServerMessa
       if (pl.userId !== me.userId) {
         getScene()?.setRemotePointerNorm(pl.userId, pl.pointer.x, pl.pointer.y);
       }
+    }
+
+    if (
+      msg.type === "inventoryChanged" &&
+      msg.payload &&
+      typeof msg.payload === "object" &&
+      "itemId" in msg.payload &&
+      "count" in msg.payload
+    ) {
+      const pl = msg.payload as { itemId: string; count: number };
+      onInventoryChanged?.(pl.itemId, Number(pl.count) || 0);
     }
 
     if (

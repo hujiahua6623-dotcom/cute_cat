@@ -211,6 +211,12 @@ async function enterGarden(): Promise<void> {
     renderInventoryUi();
   };
 
+  const applyInventoryAbsolute = (itemId: string, count: number): void => {
+    if (!inventory.has(itemId)) return;
+    inventory.set(itemId, Math.max(0, Math.floor(count)));
+    renderInventoryUi();
+  };
+
   const syncInventoryFromServer = async (): Promise<void> => {
     const token = ++inventorySyncToken;
     try {
@@ -317,6 +323,7 @@ async function enterGarden(): Promise<void> {
     store,
     getScene: scene,
     syncHud,
+    onInventoryChanged: applyInventoryAbsolute,
   });
 
   const scheduleReconnect = (): void => {

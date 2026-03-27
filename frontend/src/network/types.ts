@@ -79,6 +79,11 @@ export interface InventoryListResponse {
   items: InventoryItem[];
 }
 
+export interface InventoryChangedPayload {
+  itemId: string;
+  count: number;
+}
+
 export interface HospitalTreatResponse {
   petId: string;
   treatCost: number;
@@ -187,6 +192,7 @@ export type WsServerMessage =
       };
     }
   | { type: "petStateDelta"; payload: { petId: string; version: number; delta: Partial<PetStats>; stats: PetStats } }
+  | { type: "inventoryChanged"; payload: InventoryChangedPayload }
   | { type: "eventBroadcast"; payload: GardenEventWire }
   | { type: "userLeft"; payload: { gardenId: string; userId: string } }
   | { type: "error"; requestId?: string; payload: { code: string; message: string } }
