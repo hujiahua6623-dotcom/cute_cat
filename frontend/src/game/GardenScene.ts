@@ -18,8 +18,8 @@ function mapPetNormYToGroundBand(y: number): number {
  * Pet sprites use Y mapped into the ground band so they align with art; pointers use raw norm coords.
  */
 export class GardenScene extends Phaser.Scene {
-  private petMarkers = new Map<string, Phaser.GameObjects.Sprite>();
-  private petLabels = new Map<string, Phaser.GameObjects.Text>();
+  /** Sprite + name label; bob animation runs on the container so labels track pets. */
+  private petRoots = new Map<string, Phaser.GameObjects.Container>();
   private localCursor!: Phaser.GameObjects.Sprite;
 
   private remotePointers = new Map<string, Phaser.GameObjects.Sprite>();
@@ -71,15 +71,11 @@ export class GardenScene extends Phaser.Scene {
     const fgKey = this.pickOptionalTextureKey("garden-foreground-art", "garden-foreground");
     const fgImg = this.add.image(w / 2, h * 0.88, fgKey).setDisplaySize(w, h * 0.34).setDepth(6);
     this.ensureImageNotMissing(fgImg, "garden-foreground", { w, h: h * 0.34 });
-    this.localCursor = this.add.sprite(w * 0.5, h * 0.5, "cursor-self").setDepth(30);
-    this.tweens.add({
-      targets: this.localCursor,
-      scale: { from: 1, to: 1.1 },
-      yoyo: true,
-      duration: 420,
-      repeat: -1,
-      ease: "Sine.InOut",
-    });
+    this.localCursor = this.add
+      .sprite(w * 0.5, h * 0.5, "cursor-self")
+      .setDepth(30)
+      .setAlpha(0.55)
+      .setScale(0.82);
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
       const nx = pointer.x / w;
@@ -473,9 +469,9 @@ export class GardenScene extends Phaser.Scene {
 
     if (!this.textures.exists("cursor-self")) {
       const g = this.make.graphics({ x: 0, y: 0 });
-      g.fillStyle(0x6b9ac4, 0.95);
+      g.fillStyle(0x6b9ac4, 0.55);
       g.fillTriangle(10, 0, 20, 20, 0, 20);
-      g.lineStyle(2, 0x3d2914, 1);
+      g.lineStyle(1, 0x3d2914, 0.45);
       g.strokeTriangle(10, 0, 20, 20, 0, 20);
       g.generateTexture("cursor-self", 20, 20);
       g.destroy();
@@ -514,42 +510,22 @@ export class GardenScene extends Phaser.Scene {
       nextIds.add(pet.petId);
       const px = pet.position.x * w;
       const py = mapPetNormYToGroundBand(pet.position.y) * h;
-      let marker = this.petMarkers.get(pet.petId);
-      if (!marker) {
+      let root = this.petRoots.get(pet.petId);
+      if (!root) {
+        root = this.add.container(px, py).setDepth(10);
         const petKey = this.pickOptionalTextureKey("pet-cat-art", "pet-cat");
-        marker = this.add.sprite(px, py, petKey).setDepth(10);
+        const marker = this.add.sprite(0, 0, petKey);
         this.ensureSpriteNotMissing(marker, "pet-cat");
         const artPet = marker.texture.key === "pet-cat-art";
         marker.setScale(artPet ? 1.9 : 2);
         if (marker.texture.key === "pet-cat") {
           marker.play("pet-idle");
         }
-        const bobTween = this.tweens.add({
-          targets: marker,
-          y: py - 4,
-          yoyo: true,
-          duration: 850,
-          repeat: -1,
-          ease: "Sine.InOut",
-          delay: (this.petMarkers.size % 4) * 120,
-        });
-        this.petBobTweens.set(pet.petId, bobTween);
-        this.petMarkers.set(pet.petId, marker);
-      } else {
-        marker.setPosition(px, py);
-      }
-
-      const isMine = pet.ownerUserId === localUserId;
-      const badge = isMine ? "★" : "●";
-      const ownerText = isMine ? "你" : pet.ownerNickname ?? "其他玩家";
-      const labelText = `${badge} ${pet.petName ?? "宠物"}（${ownerText}）`;
-      let label = this.petLabels.get(pet.petId);
-      if (!label) {
-        label = this.add
-          .text(px, py - 42, labelText, {
+        const label = this.add
+          .text(0, -42, "", {
             fontFamily: "system-ui, sans-serif",
             fontSize: "11px",
-            color: isMine ? "#2f1c10" : "#2a3250",
+            color: "#2f1c10",
             padding: { x: 2, y: 1 },
             shadow: {
               offsetX: 0,
@@ -559,30 +535,53 @@ export class GardenScene extends Phaser.Scene {
               fill: true,
             },
           })
-          .setOrigin(0.5, 1)
-          .setDepth(12);
-        this.petLabels.set(pet.petId, label);
+          .setOrigin(0.5, 1);
+        root.add(marker);
+        root.add(label);
+        const bobTween = this.tweens.add({
+          targets: root,
+          y: py - 4,
+          yoyo: true,
+          duration: 850,
+          repeat: -1,
+          ease: "Sine.InOut",
+          delay: (this.petRoots.size % 4) * 120,
+        });
+        this.petBobTweens.set(pet.petId, bobTween);
+        this.petRoots.set(pet.petId, root);
       } else {
-        label.setText(labelText);
-        label.setColor(isMine ? "#2f1c10" : "#2a3250");
-        label.setPosition(px, py - 42);
+        root.setPosition(px, py);
+        this.petBobTweens.get(pet.petId)?.remove();
+        const bobTween = this.tweens.add({
+          targets: root,
+          y: py - 4,
+          yoyo: true,
+          duration: 850,
+          repeat: -1,
+          ease: "Sine.InOut",
+        });
+        this.petBobTweens.set(pet.petId, bobTween);
       }
 
+      const isMine = pet.ownerUserId === localUserId;
+      const badge = isMine ? "★" : "●";
+      const labelText = isMine
+        ? `${badge} ${pet.petName ?? "宠物"}（你）`
+        : `${badge} ${pet.petName ?? "宠物"}`;
+      const r = this.petRoots.get(pet.petId)!;
+      const label = r.getAt(1) as Phaser.GameObjects.Text;
+      label.setText(labelText);
+      label.setColor(isMine ? "#2f1c10" : "#2a3250");
     }
-    for (const [petId, marker] of this.petMarkers.entries()) {
+    for (const [petId, root] of this.petRoots.entries()) {
       if (!nextIds.has(petId)) {
         const bob = this.petBobTweens.get(petId);
         if (bob) {
           bob.remove();
           this.petBobTweens.delete(petId);
         }
-        marker.destroy();
-        this.petMarkers.delete(petId);
-        const label = this.petLabels.get(petId);
-        if (label) {
-          label.destroy();
-          this.petLabels.delete(petId);
-        }
+        root.destroy(true);
+        this.petRoots.delete(petId);
       }
     }
   }
@@ -617,8 +616,10 @@ export class GardenScene extends Phaser.Scene {
   }
 
   playPetAction(petId: string, actionType: string): void {
-    const marker = this.petMarkers.get(petId);
-    if (!marker) return;
+    const root = this.petRoots.get(petId);
+    if (!root) return;
+    const marker = root.getAt(0) as Phaser.GameObjects.Sprite;
+    if (!marker || !(marker instanceof Phaser.GameObjects.Sprite)) return;
 
     marker.setScale(2.1);
     this.tweens.add({
@@ -631,7 +632,7 @@ export class GardenScene extends Phaser.Scene {
     const fxKey = this.getActionFxKey(actionType);
     const fxFb = actionType === "Feed" ? "fx-food" : actionType === "Cuddle" ? "fx-heart" : "fx-spark";
     const fx = this.add
-      .image(marker.x, marker.y - 54, fxKey)
+      .image(root.x, root.y - 54, fxKey)
       .setDepth(18)
       .setScale(actionType === "Cuddle" ? 1.1 : 0.95)
       .setAlpha(0.95);

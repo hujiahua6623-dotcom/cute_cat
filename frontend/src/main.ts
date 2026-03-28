@@ -120,6 +120,7 @@ function renderClaim(): void {
 }
 
 let phaserGame: import("phaser").Game | null = null;
+let phaserResizeObserver: ResizeObserver | null = null;
 let wsClient: GardenWsClient | null = null;
 let wsUnsub: (() => void) | null = null;
 let toastUnsub: (() => void) | null = null;
@@ -148,6 +149,8 @@ function destroyGardenRuntime(): void {
   }
   pointerCleanup?.();
   pointerCleanup = null;
+  phaserResizeObserver?.disconnect();
+  phaserResizeObserver = null;
   closeWsOnly();
   if (phaserGame) {
     phaserGame.destroy(true);
@@ -212,7 +215,7 @@ async function enterGarden(): Promise<void> {
   let inventorySyncToken = 0;
 
   const renderInventoryUi = (): void => {
-    const lines = shopCatalog.map((it) => `${it.label} (${it.itemId}) × ${inventory.get(it.itemId) ?? 0}`);
+    const lines = shopCatalog.map((it) => `${it.label} × ${inventory.get(it.itemId) ?? 0}`);
     inventoryList.innerHTML = lines.map((line) => `<div>${line}</div>`).join("");
 
     const prev = feedSelect.value;
@@ -220,7 +223,8 @@ async function enterGarden(): Promise<void> {
     for (const it of shopCatalog) {
       const count = inventory.get(it.itemId) ?? 0;
       if (count > 0) {
-        options.push(`<option value="${it.itemId}">${it.label} (${count})</option>`);
+        const devHint = import.meta.env.DEV ? ` title="${it.itemId}"` : "";
+        options.push(`<option value="${it.itemId}"${devHint}>${it.label}（${count}）</option>`);
       }
     }
     feedSelect.innerHTML = options.join("");
@@ -266,7 +270,7 @@ async function enterGarden(): Promise<void> {
     row.innerHTML = `
       <div>
         <div class="shop-row-title">${it.label}</div>
-        <div class="shop-row-meta">${it.itemId} · ${it.price} 金币</div>
+        <div class="shop-row-meta"${import.meta.env.DEV ? ` title="${it.itemId}"` : ""}>${it.price} 金币</div>
       </div>
     `;
     const buyBtn = document.createElement("button");
@@ -358,6 +362,14 @@ async function enterGarden(): Promise<void> {
   syncHud();
 
   phaserGame = createGardenGame("game-mount");
+  const gameMountEl = document.getElementById("game-mount");
+  if (gameMountEl && typeof ResizeObserver !== "undefined") {
+    phaserResizeObserver = new ResizeObserver(() => {
+      phaserGame?.scale.refresh();
+    });
+    phaserResizeObserver.observe(gameMountEl);
+  }
+  queueMicrotask(() => phaserGame?.scale.refresh());
   const scene = (): ReturnType<typeof getGardenScene> => (phaserGame ? getGardenScene(phaserGame) : null);
   let activeGardenId = me.gardenId;
 

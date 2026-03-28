@@ -145,7 +145,9 @@ export function createGardenView(): GardenViewRefs {
   root.className = "garden-layout";
   root.innerHTML = `
     <div class="garden-stage">
-      <div id="game-mount" class="game-mount"></div>
+      <div class="garden-canvas-shell">
+        <div id="game-mount" class="game-mount"></div>
+      </div>
       <div id="ws-bar" class="ws-bar ws-corner connecting" role="status" aria-label="连接中"><span class="ws-dot"></span></div>
 
       <div class="overlay-controls">
@@ -161,7 +163,7 @@ export function createGardenView(): GardenViewRefs {
           <div class="stat-row"><label class="stat-label health">健康</label><div class="stat-bar health"><span id="bar-health" style="width:0%"></span></div><span class="stat-value" id="value-health">--</span></div>
           <div class="stat-row"><label class="stat-label mood">情绪</label><div class="stat-bar mood"><span id="bar-mood" style="width:0%"></span></div><span class="stat-value" id="value-mood">--</span></div>
         </div>
-        <div class="meta-line meta-pills" id="growth-line"></div>
+        <div class="meta-line meta-pills meta-line--full" id="growth-line"></div>
       </div>
 
       <div class="overlay-event panel event-floating hidden">
@@ -198,13 +200,15 @@ export function createGardenView(): GardenViewRefs {
 
       <div class="overlay-dock">
         <div class="action-dock">
-          <button type="button" class="dock-action" data-action="Feed" title="喂食"><span class="dock-icon icon-feed" aria-hidden="true"></span><span class="dock-label">喂食</span></button>
-          <button type="button" class="dock-action" data-action="Cuddle" title="抱抱"><span class="dock-icon icon-cuddle" aria-hidden="true"></span><span class="dock-label">抱抱</span></button>
-          <button type="button" class="dock-action" data-action="Pat" title="摸头"><span class="dock-icon icon-pat" aria-hidden="true"></span><span class="dock-label">摸头</span></button>
-          <button type="button" class="dock-action utility" id="dock-shop" title="商店"><span class="dock-icon icon-shop" aria-hidden="true"></span><span class="dock-label">商店</span></button>
-          <button type="button" class="dock-action utility" id="dock-bag" title="背包"><span class="dock-icon icon-bag" aria-hidden="true"></span><span class="dock-label">背包</span></button>
-          <button type="button" class="dock-action utility" id="dock-hospital" title="医院"><span class="dock-icon icon-hospital" aria-hidden="true"></span><span class="dock-label">医院</span></button>
-          <button type="button" class="dock-action utility danger" id="leave-garden" title="退出"><span class="dock-icon icon-leave" aria-hidden="true"></span><span class="dock-label">退出</span></button>
+          <div class="action-dock-inner">
+            <button type="button" class="dock-action" data-action="Feed" title="喂食"><span class="dock-icon icon-feed" aria-hidden="true"></span><span class="dock-label">喂食</span></button>
+            <button type="button" class="dock-action" data-action="Cuddle" title="抱抱"><span class="dock-icon icon-cuddle" aria-hidden="true"></span><span class="dock-label">抱抱</span></button>
+            <button type="button" class="dock-action" data-action="Pat" title="摸头"><span class="dock-icon icon-pat" aria-hidden="true"></span><span class="dock-label">摸头</span></button>
+            <button type="button" class="dock-action utility" id="dock-shop" title="商店"><span class="dock-icon icon-shop" aria-hidden="true"></span><span class="dock-label">商店</span></button>
+            <button type="button" class="dock-action utility" id="dock-bag" title="背包"><span class="dock-icon icon-bag" aria-hidden="true"></span><span class="dock-label">背包</span></button>
+            <button type="button" class="dock-action utility" id="dock-hospital" title="医院"><span class="dock-icon icon-hospital" aria-hidden="true"></span><span class="dock-label">医院</span></button>
+            <button type="button" class="dock-action utility danger" id="leave-garden" title="退出"><span class="dock-icon icon-leave" aria-hidden="true"></span><span class="dock-label">退出</span></button>
+          </div>
         </div>
       </div>
     </div>

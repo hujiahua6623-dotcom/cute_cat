@@ -10,13 +10,17 @@ export function createGardenGame(parentId: string): Phaser.Game {
     backgroundColor: "#f5ecd7",
     scene: [GardenScene],
     scale: {
-      mode: Phaser.Scale.FIT,
+      // FIT leaves empty bands inside the canvas when parent aspect ≠ game (shows as “checkerboard”); ENVELOP fills.
+      mode: Phaser.Scale.ENVELOP,
       autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: 960,
+      height: 540,
     },
     render: {
       pixelArt: true,
       antialias: false,
       roundPixels: true,
+      transparent: false,
     },
   });
 }

@@ -13,6 +13,17 @@ function escapeHtml(text: string): string {
   return d.innerHTML;
 }
 
+/** Map API `suggestedActionType` to player-facing Chinese (offline summary). */
+function labelSuggestedAction(code: string): string {
+  const m: Record<string, string> = {
+    Feed: "喂食",
+    TreatAtHospital: "去医院治疗",
+    Cuddle: "抱抱",
+    Pat: "摸头",
+  };
+  return m[code] ?? code;
+}
+
 /** Offline summary modal; resolves when user dismisses. */
 export function showOfflineModal(reasons: string[], suggested: string): Promise<void> {
   return new Promise((resolve) => {
@@ -26,8 +37,8 @@ export function showOfflineModal(reasons: string[], suggested: string): Promise<
           <p class="offline-meta">系统已按真实时间持续结算宠物状态</p>
           <p class="modal-pixel-lead">你离开期间，花园里发生的事：</p>
           <ul class="modal-pixel-list">${list || "<li>（暂无摘要）</li>"}</ul>
-          <p class="suggest">建议下一步：<strong>${escapeHtml(suggested)}</strong></p>
-          <button type="button" class="btn modal-pixel-primary" data-dismiss>进入花园</button>
+          <p class="suggest">建议下一步：<strong>${escapeHtml(labelSuggestedAction(suggested))}</strong></p>
+          <button type="button" class="modal-pixel-primary" data-dismiss>进入花园</button>
         </div>
       </div>
     `;
