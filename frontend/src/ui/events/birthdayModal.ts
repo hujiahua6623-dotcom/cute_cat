@@ -38,9 +38,10 @@ export function openBirthdayModal(ev: GardenEventWire): void {
   backdrop.className = "modal-backdrop birthday-backdrop";
 
   const panel = document.createElement("div");
-  panel.className = "panel modal modal--pixel birthday-panel";
+  panel.className = "modal modal--pixel birthday-panel";
 
   panel.innerHTML = `
+    <div class="modal-pixel-body">
     <h2 class="birthday-title">${ev.title ?? "生日庆典"}</h2>
     <p class="offline-meta birthday-message">${ev.message ?? "今天多陪陪它吧（占位）"}</p>
 
@@ -59,6 +60,7 @@ export function openBirthdayModal(ev: GardenEventWire): void {
     <div class="birthday-reward" data-role="reward" style="display:none">
       <div class="section-subtitle">奖励已发放</div>
       <div class="birthday-reward-text" data-role="rewardCoins">+0 金币</div>
+    </div>
     </div>
   `;
 

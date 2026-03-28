@@ -1,14 +1,25 @@
 import Phaser from "phaser";
+import { gameAssetUrl } from "../utils/gameAssetUrl";
+
+/** Server historically stored pet Y in ~[0.2, 0.8]; map into visible grass band (see doc/API pet display note). */
+const PET_NORM_Y_SRC_LO = 0.2;
+const PET_NORM_Y_SRC_HI = 0.8;
+const PET_NORM_Y_GROUND_LO = 0.62;
+const PET_NORM_Y_GROUND_HI = 0.8;
+
+function mapPetNormYToGroundBand(y: number): number {
+  const t = Math.max(0, Math.min(1, (y - PET_NORM_Y_SRC_LO) / (PET_NORM_Y_SRC_HI - PET_NORM_Y_SRC_LO)));
+  return PET_NORM_Y_GROUND_LO + t * (PET_NORM_Y_GROUND_HI - PET_NORM_Y_GROUND_LO);
+}
 
 /**
  * Phaser layer: garden backdrop, pets, local cursor dot, remote user pointers.
  * Coordinates are normalized 0–1 on the canvas (doc/API §8).
+ * Pet sprites use Y mapped into the ground band so they align with art; pointers use raw norm coords.
  */
 export class GardenScene extends Phaser.Scene {
   private petMarkers = new Map<string, Phaser.GameObjects.Sprite>();
   private petLabels = new Map<string, Phaser.GameObjects.Text>();
-  private petBadges = new Map<string, Phaser.GameObjects.Image>();
-
   private localCursor!: Phaser.GameObjects.Sprite;
 
   private remotePointers = new Map<string, Phaser.GameObjects.Sprite>();
@@ -20,40 +31,46 @@ export class GardenScene extends Phaser.Scene {
   readonly pointerNormEmitter = new Phaser.Events.EventEmitter();
   private cloudSprites: Phaser.GameObjects.Image[] = [];
 
+  /** Optional file keys that failed in preload (Phaser may still register a broken texture). */
+  private failedOptionalKeys = new Set<string>();
+
   constructor() {
     super("GardenScene");
   }
 
   preload(): void {
+    this.load.on("loaderror", (file: { key?: string }) => {
+      if (file.key) this.failedOptionalKeys.add(file.key);
+    });
     // Resource-driven pipeline (preferred):
     // put production assets under frontend/public/assets/game/*
-    this.loadOptionalImage("garden-bg-art", "/assets/game/scene/garden_bg_playfield.png");
-    this.loadOptionalImage("garden-bg-fallback", "/assets/game/scene/ui_garden_main_multi_pet.png");
-    this.loadOptionalImage("garden-foreground-art", "/assets/game/scene/garden_foreground.png");
-    this.loadOptionalImage("pet-cat-art", "/assets/game/pets/cat/cat_idle.png");
-    this.loadOptionalImage("fx-heart-art", "/assets/game/fx/heart_burst.png");
-    this.loadOptionalImage("fx-spark-art", "/assets/game/fx/spark_pop.png");
-    this.loadOptionalImage("fx-food-art", "/assets/game/fx/food_pop.png");
+    this.loadOptionalImage("garden-bg-art", gameAssetUrl("assets/game/scene/garden_bg_playfield.png"));
+    this.loadOptionalImage("garden-bg-fallback", gameAssetUrl("assets/game/scene/ui_garden_main_multi_pet.png"));
+    this.loadOptionalImage("garden-foreground-art", gameAssetUrl("assets/game/scene/garden_foreground.png"));
+    this.loadOptionalImage("pet-cat-art", gameAssetUrl("assets/game/pets/cat/cat_idle.png"));
+    this.loadOptionalImage("fx-heart-art", gameAssetUrl("assets/game/fx/heart_burst.png"));
+    this.loadOptionalImage("fx-spark-art", gameAssetUrl("assets/game/fx/spark_pop.png"));
+    this.loadOptionalImage("fx-food-art", gameAssetUrl("assets/game/fx/food_pop.png"));
   }
 
   create(): void {
     const w = this.scale.width;
     const h = this.scale.height;
     this.ensureTextures();
-    const bgKey = this.textures.exists("garden-bg-art")
-      ? "garden-bg-art"
-      : this.textures.exists("garden-bg-fallback")
-        ? "garden-bg-fallback"
-        : "garden-bg";
-    this.add.image(w / 2, h / 2, bgKey).setDisplaySize(w, h);
+    const bgKey = this.pickOptionalTextureKey("garden-bg-art", "garden-bg", [
+      ["garden-bg-fallback", "garden-bg"],
+    ]);
+    const bgImg = this.add.image(w / 2, h / 2, bgKey).setDisplaySize(w, h);
+    this.ensureImageNotMissing(bgImg, "garden-bg", { w, h });
     this.cloudSprites = [
       this.add.image(w * 0.2, h * 0.14, "cloud-puff").setScale(1.2).setAlpha(0.7).setDepth(2),
       this.add.image(w * 0.73, h * 0.18, "cloud-puff").setScale(1.05).setAlpha(0.68).setDepth(2),
     ];
     this.placeAmbientParticles(w, h);
     this.placeGroundDetails(w, h);
-    const fgKey = this.textures.exists("garden-foreground-art") ? "garden-foreground-art" : "garden-foreground";
-    this.add.image(w / 2, h * 0.88, fgKey).setDisplaySize(w, h * 0.34).setDepth(6);
+    const fgKey = this.pickOptionalTextureKey("garden-foreground-art", "garden-foreground");
+    const fgImg = this.add.image(w / 2, h * 0.88, fgKey).setDisplaySize(w, h * 0.34).setDepth(6);
+    this.ensureImageNotMissing(fgImg, "garden-foreground", { w, h: h * 0.34 });
     this.localCursor = this.add.sprite(w * 0.5, h * 0.5, "cursor-self").setDepth(30);
     this.tweens.add({
       targets: this.localCursor,
@@ -75,6 +92,64 @@ export class GardenScene extends Phaser.Scene {
   private loadOptionalImage(key: string, url: string): void {
     // Missing files are acceptable; scene will fallback to procedural textures.
     this.load.image(key, url);
+  }
+
+  /**
+   * True if the key points to a real image (not Phaser __MISSING / empty frame).
+   * Loader may skip addToCache on error, but some paths still leave unusable entries.
+   */
+  private isUsableImageKey(key: string): boolean {
+    if (this.failedOptionalKeys.has(key)) return false;
+    if (!this.textures.exists(key)) return false;
+    try {
+      const texture = this.textures.get(key);
+      if (!texture || texture.key === "__MISSING") return false;
+      const frame = texture.get();
+      if (!frame?.source) return false;
+      const fw = frame.width ?? 0;
+      const fh = frame.height ?? 0;
+      const sw = frame.source.width ?? 0;
+      const sh = frame.source.height ?? 0;
+      return fw > 1 && fh > 1 && sw > 1 && sh > 1;
+    } catch {
+      return false;
+    }
+  }
+
+  /** If GPU/loader left a placeholder, swap to procedural art (avoids checkerboard band). */
+  private ensureImageNotMissing(
+    obj: Phaser.GameObjects.Image,
+    fallbackKey: string,
+    setSize?: { w: number; h: number }
+  ): void {
+    const fk = obj.frame?.texture?.key;
+    if (fk === "__MISSING" || fk === "__DEFAULT") {
+      obj.setTexture(fallbackKey);
+      if (setSize) obj.setDisplaySize(setSize.w, setSize.h);
+    }
+  }
+
+  private ensureSpriteNotMissing(obj: Phaser.GameObjects.Sprite, fallbackKey: string): void {
+    const fk = obj.frame?.texture?.key;
+    if (fk === "__MISSING" || fk === "__DEFAULT") {
+      obj.setTexture(fallbackKey);
+    }
+  }
+
+  /** Use uploaded art only when load + decode succeeded; otherwise procedural fallback (avoids checkerboard). */
+  private pickOptionalTextureKey(artKey: string, fallbackKey: string, chain?: [string, string][]): string {
+    if (this.isUsableImageKey(artKey)) {
+      return artKey;
+    }
+    if (chain) {
+      for (const [nextArt, nextFb] of chain) {
+        if (this.isUsableImageKey(nextArt)) {
+          return nextArt;
+        }
+        if (this.textures.exists(nextFb)) return nextFb;
+      }
+    }
+    return fallbackKey;
   }
 
   update(_time: number, delta: number): void {
@@ -438,13 +513,15 @@ export class GardenScene extends Phaser.Scene {
     for (const pet of pets) {
       nextIds.add(pet.petId);
       const px = pet.position.x * w;
-      const py = pet.position.y * h;
+      const py = mapPetNormYToGroundBand(pet.position.y) * h;
       let marker = this.petMarkers.get(pet.petId);
       if (!marker) {
-        const usingArtPet = this.textures.exists("pet-cat-art");
-        const petKey = usingArtPet ? "pet-cat-art" : "pet-cat";
-        marker = this.add.sprite(px, py, petKey).setScale(usingArtPet ? 1.9 : 2).setDepth(10);
-        if (!usingArtPet) {
+        const petKey = this.pickOptionalTextureKey("pet-cat-art", "pet-cat");
+        marker = this.add.sprite(px, py, petKey).setDepth(10);
+        this.ensureSpriteNotMissing(marker, "pet-cat");
+        const artPet = marker.texture.key === "pet-cat-art";
+        marker.setScale(artPet ? 1.9 : 2);
+        if (marker.texture.key === "pet-cat") {
           marker.play("pet-idle");
         }
         const bobTween = this.tweens.add({
@@ -457,9 +534,6 @@ export class GardenScene extends Phaser.Scene {
           delay: (this.petMarkers.size % 4) * 120,
         });
         this.petBobTweens.set(pet.petId, bobTween);
-        if (pet.ownerUserId !== localUserId) {
-          marker.setTint(0xc9d8ff);
-        }
         this.petMarkers.set(pet.petId, marker);
       } else {
         marker.setPosition(px, py);
@@ -473,10 +547,17 @@ export class GardenScene extends Phaser.Scene {
       if (!label) {
         label = this.add
           .text(px, py - 42, labelText, {
-            fontSize: "12px",
+            fontFamily: "system-ui, sans-serif",
+            fontSize: "11px",
             color: isMine ? "#2f1c10" : "#2a3250",
-            backgroundColor: isMine ? "#fff1cf" : "#e9efff",
-            padding: { left: 6, right: 6, top: 2, bottom: 2 },
+            padding: { x: 2, y: 1 },
+            shadow: {
+              offsetX: 0,
+              offsetY: 1,
+              color: "#fffef8",
+              blur: 2,
+              fill: true,
+            },
           })
           .setOrigin(0.5, 1)
           .setDepth(12);
@@ -484,22 +565,9 @@ export class GardenScene extends Phaser.Scene {
       } else {
         label.setText(labelText);
         label.setColor(isMine ? "#2f1c10" : "#2a3250");
-        label.setBackgroundColor(isMine ? "#fff1cf" : "#e9efff");
         label.setPosition(px, py - 42);
       }
 
-      const badgeTex = isMine ? "pet-badge-self" : "pet-badge-other";
-      const labelLeft = label.x - label.width * 0.5;
-      const badgeX = labelLeft - 10;
-      const badgeY = label.y - label.height * 0.5 + 1;
-      let badgeSprite = this.petBadges.get(pet.petId);
-      if (!badgeSprite) {
-        badgeSprite = this.add.image(badgeX, badgeY, badgeTex).setDepth(13);
-        this.petBadges.set(pet.petId, badgeSprite);
-      } else {
-        badgeSprite.setTexture(badgeTex);
-        badgeSprite.setPosition(badgeX, badgeY);
-      }
     }
     for (const [petId, marker] of this.petMarkers.entries()) {
       if (!nextIds.has(petId)) {
@@ -514,11 +582,6 @@ export class GardenScene extends Phaser.Scene {
         if (label) {
           label.destroy();
           this.petLabels.delete(petId);
-        }
-        const badge = this.petBadges.get(petId);
-        if (badge) {
-          badge.destroy();
-          this.petBadges.delete(petId);
         }
       }
     }
@@ -566,11 +629,13 @@ export class GardenScene extends Phaser.Scene {
     });
 
     const fxKey = this.getActionFxKey(actionType);
+    const fxFb = actionType === "Feed" ? "fx-food" : actionType === "Cuddle" ? "fx-heart" : "fx-spark";
     const fx = this.add
       .image(marker.x, marker.y - 54, fxKey)
       .setDepth(18)
       .setScale(actionType === "Cuddle" ? 1.1 : 0.95)
       .setAlpha(0.95);
+    this.ensureImageNotMissing(fx, fxFb);
     this.tweens.add({
       targets: fx,
       y: fx.y - 26,
@@ -583,11 +648,11 @@ export class GardenScene extends Phaser.Scene {
 
   private getActionFxKey(actionType: string): string {
     if (actionType === "Feed") {
-      return this.textures.exists("fx-food-art") ? "fx-food-art" : "fx-food";
+      return this.pickOptionalTextureKey("fx-food-art", "fx-food");
     }
     if (actionType === "Cuddle") {
-      return this.textures.exists("fx-heart-art") ? "fx-heart-art" : "fx-heart";
+      return this.pickOptionalTextureKey("fx-heart-art", "fx-heart");
     }
-    return this.textures.exists("fx-spark-art") ? "fx-spark-art" : "fx-spark";
+    return this.pickOptionalTextureKey("fx-spark-art", "fx-spark");
   }
 }

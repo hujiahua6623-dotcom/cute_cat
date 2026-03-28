@@ -92,7 +92,7 @@ def _normalize_overlapped_pet_positions(pets: list[Pet]) -> None:
         for idx, pet in enumerate(sorted(group, key=lambda p: p.id)):
             angle = (2 * math.pi * idx) / n
             nx = max(0.1, min(0.9, base_x + radius * math.cos(angle)))
-            ny = max(0.14, min(0.9, base_y + radius * math.sin(angle)))
+            ny = max(0.58, min(0.88, base_y + radius * math.sin(angle)))
             pet.position = {"x": round(nx, 4), "y": round(ny, 4)}
 
 

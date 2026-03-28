@@ -42,20 +42,21 @@ async def claim_pet(
     gt = get_game_time(now, anchor_wall_clock=anchor)
 
     pid = new_id("pet")
+    pos_h = abs(hash(pid))
     pet = Pet(
         id=pid,
         owner_user_id=user.id,
         garden_id=gid,
         pet_name=body.petName,
         pet_type=body.petType,
-        skin_seed=abs(hash(pid)) % 1_000_000,
+        skin_seed=pos_h % 1_000_000,
         growth_stage=0,
         birthday_game_day=gt.game_day_index,
         stats=default_stats(),
-        # Spawn around center with deterministic spread to avoid complete overlap in shared garden.
+        # Spawn on the walkable grass band (aligns with frontend garden art); x spread avoids overlap.
         position={
-            "x": 0.2 + ((abs(hash(pid)) % 6000) / 10000.0),
-            "y": 0.2 + (((abs(hash(pid)) // 6000) % 6000) / 10000.0),
+            "x": round(0.15 + (pos_h % 7000) / 10000.0, 4),
+            "y": round(0.62 + ((pos_h // 7000) % 1801) / 10000.0, 4),
         },
         sick_window=[],
         diet_history=[],

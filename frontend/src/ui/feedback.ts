@@ -20,13 +20,15 @@ export function showOfflineModal(reasons: string[], suggested: string): Promise<
     backdrop.className = "modal-backdrop";
     const list = reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
     backdrop.innerHTML = `
-      <div class="panel modal modal--pixel">
-        <h2>离线摘要</h2>
-        <p class="offline-meta">系统已按真实时间持续结算宠物状态</p>
-        <p>你离开期间，花园里发生的事：</p>
-        <ul>${list || "<li>（暂无摘要）</li>"}</ul>
-        <p class="suggest">建议下一步：<strong>${escapeHtml(suggested)}</strong></p>
-        <button type="button" class="btn" data-dismiss>进入花园</button>
+      <div class="modal modal--pixel" role="dialog" aria-labelledby="offline-summary-title">
+        <div class="modal-pixel-body">
+          <h2 id="offline-summary-title">离线摘要</h2>
+          <p class="offline-meta">系统已按真实时间持续结算宠物状态</p>
+          <p class="modal-pixel-lead">你离开期间，花园里发生的事：</p>
+          <ul class="modal-pixel-list">${list || "<li>（暂无摘要）</li>"}</ul>
+          <p class="suggest">建议下一步：<strong>${escapeHtml(suggested)}</strong></p>
+          <button type="button" class="btn modal-pixel-primary" data-dismiss>进入花园</button>
+        </div>
       </div>
     `;
     backdrop.querySelector("[data-dismiss]")?.addEventListener("click", () => {

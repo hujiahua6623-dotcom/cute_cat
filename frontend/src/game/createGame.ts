@@ -15,6 +15,8 @@ export function createGardenGame(parentId: string): Phaser.Game {
     },
     render: {
       pixelArt: true,
+      antialias: false,
+      roundPixels: true,
     },
   });
 }

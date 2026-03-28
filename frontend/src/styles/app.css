@@ -110,17 +110,18 @@ body {
   animation: banner-pop 0.18s ease-out;
 }
 
-.auth-page {
+/* Stronger than `.panel` alone: pixel panel bg + no flat fill leaking around tab/button skins */
+.panel.auth-page {
   max-width: 560px;
   margin: 5vh auto 0;
   backdrop-filter: blur(1px);
-  border: 0;
-  background-color: transparent;
-  background-image:
-    linear-gradient(180deg, rgba(255, 250, 238, 0.88) 0%, rgba(247, 229, 191, 0.9) 100%),
+  background:
+    linear-gradient(180deg, rgba(255, 250, 238, 0.92) 0%, rgba(247, 229, 191, 0.94) 100%),
     url("/assets/game/ui/auth_panel_bg.png");
   background-size: cover, cover;
   background-position: center, center;
+  border: 3px solid #5f4430;
+  border-radius: 12px;
   box-shadow: 8px 8px 0 rgba(60, 40, 20, 0.2);
 }
 
@@ -378,10 +379,12 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 10px;
+  bottom: 4px;
   display: flex;
   justify-content: center;
   z-index: 17;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  overflow: visible;
 }
 
 .action-dock {
@@ -396,9 +399,11 @@ body {
 }
 
 .dock-action {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   padding: 7px 4px 6px;
   border: 3px solid #5b3f2d;
   border-radius: 10px;
@@ -409,10 +414,6 @@ body {
   font-size: 1.05rem;
   line-height: 1;
   transition: transform 0.08s ease, filter 0.12s ease;
-}
-
-.dock-action span {
-  font-size: 0.68rem;
 }
 
 .dock-action:hover:not(:disabled) {
@@ -726,6 +727,16 @@ body {
   .action-dock {
     grid-template-columns: repeat(4, minmax(58px, 72px));
   }
+
+  .overlay-dock .action-dock {
+    min-height: 128px;
+    padding-bottom: 18px;
+  }
+
+  .overlay-dock .dock-action {
+    max-width: 62px;
+    min-height: 58px;
+  }
 }
 
 .toast {
@@ -878,36 +889,67 @@ body {
 .overlay-dock .action-dock {
   border: 0;
   box-shadow: none;
-  padding: 12px;
-  background: transparent;
+  padding: 12px 14px 22px;
+  min-height: 124px;
+  align-items: end;
+  overflow: visible;
+  background-color: rgba(247, 220, 174, 0.55);
   background-image: url("/assets/game/ui/dock_frame.png");
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
-.dock-action {
+.overlay-dock .dock-action {
   border: 0;
-  background: transparent;
+  background-color: transparent;
   background-image: url("/assets/game/ui/btn_action_normal.png");
-  background-size: 100% 100%;
+  background-size: contain;
+  background-position: center top;
   background-repeat: no-repeat;
   color: #4d3526;
-  padding: 8px 4px 7px;
+  padding: 5px 2px 10px;
   font-size: 0.7rem;
+  width: 100%;
+  max-width: 72px;
+  min-height: 78px;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  padding-top: 8px;
 }
 
-.dock-action:active:not(:disabled) {
+.dock-label {
+  font-family: system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-align: center;
+  max-width: 100%;
+  margin-top: 2px;
+  padding: 0 1px;
+  flex-shrink: 0;
+}
+
+.overlay-dock .dock-icon {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.overlay-dock .dock-action:active:not(:disabled) {
   transform: translateY(2px);
   background-image: url("/assets/game/ui/btn_action_pressed.png");
 }
 
-.dock-action:disabled {
+.overlay-dock .dock-action:disabled {
   background-image: url("/assets/game/ui/btn_action_disabled.png");
 }
 
-.dock-action.utility,
-.dock-action.utility.danger {
+/* Specificity: base `.dock-action.utility.danger` is 3 classes and was overriding the 2-class overlay rule. */
+.overlay-dock .dock-action.utility,
+.overlay-dock .dock-action.utility.danger {
+  background-color: transparent;
   background-image: url("/assets/game/ui/btn_action_normal.png");
+  background-size: contain;
+  background-position: center top;
+  background-repeat: no-repeat;
 }
 
 .dock-icon {
@@ -958,11 +1000,59 @@ body {
 .modal--pixel {
   border: 0;
   box-shadow: none;
-  padding: 22px 24px;
+  padding: 20px 22px 22px;
   background: transparent;
   background-image: url("/assets/game/ui/modal_panel.png");
   background-size: 100% 100%;
   background-repeat: no-repeat;
+  box-sizing: border-box;
+}
+
+.modal-pixel-body {
+  padding: 2px 10px 4px;
+  box-sizing: border-box;
+  max-height: min(72vh, 520px);
+  overflow: auto;
+}
+
+.modal--pixel h2 {
+  margin: 0 0 8px;
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+
+.modal--pixel .offline-meta {
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+
+.modal-pixel-lead {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  font-family: system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.modal-pixel-list {
+  margin: 0 0 10px;
+  padding-left: 1.15em;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  font-family: system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.modal--pixel .suggest {
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  font-family: system-ui, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.modal--pixel .modal-pixel-primary {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 2px;
 }
 
 /* Stat bars: frame + tiled fills (satiety / health / mood / event progress). */
@@ -1037,14 +1127,18 @@ body {
 
 .auth-page .tabs button {
   margin-right: 0;
+  appearance: none;
+  -webkit-appearance: none;
   border: 0;
   border-radius: 0;
   background-color: transparent;
   background-image: url("/assets/game/ui/tab_auth_inactive.png");
-  background-size: 100% 100%;
+  background-size: contain;
+  background-position: center;
   background-repeat: no-repeat;
-  min-width: 108px;
-  padding: 12px 20px 14px;
+  min-width: 112px;
+  min-height: 44px;
+  padding: 10px 18px 12px;
   color: #4d3526;
   font-size: 0.82rem;
 }
@@ -1054,13 +1148,17 @@ body {
 }
 
 .auth-page .btn {
+  appearance: none;
+  -webkit-appearance: none;
   border: 0;
   border-radius: 0;
   background-color: transparent;
   background-image: url("/assets/game/ui/btn_auth_primary.png");
-  background-size: 100% 100%;
+  background-size: contain;
+  background-position: center;
   background-repeat: no-repeat;
-  padding: 14px 22px;
+  min-height: 48px;
+  padding: 12px 24px;
   color: #2a1f12;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
   box-shadow: none;
